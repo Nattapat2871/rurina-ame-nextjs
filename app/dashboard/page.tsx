@@ -3,8 +3,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 
+interface Guild {
+  id: string;
+  name: string;
+  icon: string | null;
+}
+
 export default function Dashboard() {
-  const [guilds, setGuilds] = useState<any[]>([]);
+  const [guilds, setGuilds] = useState<Guild[]>([]);
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
