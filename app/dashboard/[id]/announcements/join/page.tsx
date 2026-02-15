@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 const AVAILABLE_VARS = [
     { name: "user", desc: "แท็กชื่อ (@User)" },
     { name: "user.username", desc: "ชื่อผู้ใช้" },
+    { name: "user.global_name", desc: "ชื่อที่แสดง (Display Name)" },
     { name: "user.id", desc: "ไอดีผู้ใช้" },
     { name: "user.avatar", desc: "ลิงก์รูปโปรไฟล์" },
     { name: "server.name", desc: "ชื่อเซิร์ฟเวอร์" },
@@ -99,20 +100,15 @@ const SmartInput = ({ value, onChange, placeholder, className, isTextarea = fals
 const parseMarkdown = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(\[[^\]]+\]\([^)]+\)|<@[^>]+>|<#[^>]+>|:\d+:)/g);
-    
     return parts.map((part, index) => {
         const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
         if (linkMatch) return <a key={index} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-[#00b0f4] hover:underline cursor-pointer">{linkMatch[1]}</a>;
-        
         const mentionMatch = part.match(/^<@([^>]+)>$/);
         if (mentionMatch) return <span key={index} className="bg-[#5865f2]/30 text-[#c9cdfb] px-[4px] py-[1px] mx-[2px] rounded font-medium hover:bg-[#5865f2] hover:text-white transition-colors cursor-pointer inline-block">@{mentionMatch[1]}</span>;
-
         const channelMatch = part.match(/^<#([^>]+)>$/);
         if (channelMatch) return <span key={index} className="bg-[#5865f2]/30 text-[#c9cdfb] px-[4px] py-[1px] mx-[2px] rounded font-medium hover:bg-[#5865f2] hover:text-white transition-colors cursor-pointer inline-block">#{channelMatch[1]}</span>;
-
         const emojiMatch = part.match(/^:(\d+):$/);
         if (emojiMatch) return <img key={index} src={`https://cdn.discordapp.com/emojis/${emojiMatch[1]}.png`} className="w-5 h-5 inline-block align-middle mx-[2px] object-contain" alt="emoji"/>;
-
         return part;
     });
 };
@@ -135,6 +131,7 @@ const previewReplacer = (text: string, botAvatar: string, userReal: any, guildRe
     msg = msg.replace(/\{user\}/gi, userMention);
     msg = msg.replace(/\{user\.mention\}/gi, userMention);
     msg = msg.replace(/\{user\.username\}/gi, username);
+    msg = msg.replace(/\{user\.global_name\}/gi, userReal?.global_name || username);
     msg = msg.replace(/\{user\.id\}/gi, userId);
     msg = msg.replace(/\{user\.avatar\}/gi, userAvatarUrl); 
     msg = msg.replace(/\{server\.name\}/gi, serverName);
@@ -205,23 +202,43 @@ export default function JoinSettingsPage() {
     const [channels, setChannels] = useState<any[]>([]);
     const [userProfile, setUserProfile] = useState<any>(null); 
     const [guildProfile, setGuildProfile] = useState<any>(null);
+    const [availableFonts, setAvailableFonts] = useState<string[]>(["Default"]);
 
     const [selectedChannel, setSelectedChannel] = useState("");
     const [message, setMessage] = useState("");
     const [isEnabled, setIsEnabled] = useState(false);
     const [botInfo, setBotInfo] = useState({ name: "Bot", avatar: "https://cdn.discordapp.com/embed/avatars/0.png" });
     
+    // --- Embed State ---
     const [useEmbed, setUseEmbed] = useState(false);
     const [embedData, setEmbedData] = useState({
         author_name: "", author_icon: "", title: "", description: "", url: "", color: "#5865f2",
         thumbnail: "", image: "", footer_text: "", footer_icon: "", timestamp_mode: "none", custom_timestamp: ""
     });
 
+    // --- Image State ---
     const [useImage, setUseImage] = useState(false);
     const [imageData, setImageData] = useState({
         bg_url: "https://i.imgur.com/3qP0wwe.png", 
-        text_color: "#ffffff",
-        text_content: "Welcome to {server.name}!"
+        // 3 บรรทัด
+        image_title: "WELCOME", 
+        image_username: "{user.username}",
+        text_content: "Welcome to {server.name}!",
+        
+        // Font
+        font_name: "Default",
+
+        // Configs
+        avatar_shape: "circle", 
+        overlay_opacity: 50,
+        image_position: "left",
+        
+        // Colors
+        title_color: "#FFFFFF",
+        username_color: "#00FFFF",
+        message_color: "#FFFFFF",
+        circle_color: "#FFFFFF",
+        overlay_color: "#000000"
     });
 
     useEffect(() => {
@@ -231,6 +248,14 @@ export default function JoinSettingsPage() {
             if(Array.isArray(data)){ const currentGuild = data.find(g => g.id === guildId); if(currentGuild) setGuildProfile(currentGuild); }
         });
 
+        // Fetch Font List
+        fetch(`${API_URL}/api/announce/list_fonts`, { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => {
+                 if (data.fonts) setAvailableFonts(data.fonts);
+            })
+            .catch(err => console.error("Font fetch error:", err));
+
         fetch(`${API_URL}/api/announcements/${guildId}/status`, { credentials: 'include' })
             .then(res => res.json())
             .then(data => {
@@ -238,12 +263,22 @@ export default function JoinSettingsPage() {
                 setSelectedChannel(data.welcome_channel_id || "");
                 setMessage(data.welcome_message || "");
                 setIsEnabled(data.is_welcome_enabled || false);
+                
                 setUseEmbed(data.use_embed || false);
                 if (data.embed_data && Object.keys(data.embed_data).length > 0) {
-                    setEmbedData(prev => ({ ...prev, ...data.embed_data, timestamp_mode: data.embed_data.timestamp_mode || (data.embed_data.timestamp ? 'now' : 'none') }));
+                    setEmbedData(prev => ({ ...prev, ...data.embed_data }));
                 }
+                
                 setUseImage(data.use_image || false);
-                if (data.image_data) { setImageData(prev => ({ ...prev, ...data.image_data })); }
+                if (data.image_data) { 
+                    setImageData(prev => ({ 
+                        ...prev, 
+                        ...data.image_data,
+                        image_title: data.image_data.image_title || "WELCOME",
+                        image_username: data.image_data.image_username || "{user.username}",
+                        font_name: data.image_data.font_name || "Default"
+                    })); 
+                }
             });
     }, [guildId, API_URL]);
 
@@ -252,11 +287,6 @@ export default function JoinSettingsPage() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (embedData.description.length > 4096) {
-            Swal.fire({ title: 'ข้อผิดพลาด!', text: 'รายละเอียด Embed ต้องไม่เกิน 4096 ตัวอักษร', icon: 'error', background: '#2b2d31', color: '#dbdee1', confirmButtonColor: '#5865f2' });
-            return;
-        }
-
         const payload = {
             channel_id: selectedChannel, message: message,
             use_embed: useEmbed, embed_data: embedData,
@@ -265,7 +295,7 @@ export default function JoinSettingsPage() {
 
         const res = await fetch(`${API_URL}/api/announcements/${guildId}/save_join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include' });
         if (res.ok) Swal.fire({ title: 'บันทึกสำเร็จ!', icon: 'success', background: '#2b2d31', color: '#dbdee1', confirmButtonColor: '#5865f2', timer: 1500 });
-        else Swal.fire({ title: 'เกิดข้อผิดพลาด!', text: 'ไม่สามารถบันทึกการตั้งค่าได้', icon: 'error', background: '#2b2d31', color: '#dbdee1', confirmButtonColor: '#5865f2' });
+        else Swal.fire({ title: 'เกิดข้อผิดพลาด!', text: 'บันทึกไม่สำเร็จ', icon: 'error', background: '#2b2d31', color: '#dbdee1', confirmButtonColor: '#5865f2' });
     };
 
     const toggleSwitch = async (checked: boolean) => {
@@ -273,7 +303,7 @@ export default function JoinSettingsPage() {
         await fetch(`${API_URL}/api/announcements/${guildId}/toggle_join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: checked }), credentials: 'include' });
     };
 
-    // --- PREVIEW ---
+    // --- Embed Preview Component ---
     const EmbedPreview = () => {
         const pTitle = previewReplacer(embedData.title, botInfo.avatar, userProfile, guildProfile, true);
         const pDesc = previewReplacer(embedData.description, botInfo.avatar, userProfile, guildProfile, false);
@@ -286,19 +316,19 @@ export default function JoinSettingsPage() {
         const pMessage = previewReplacer(message, botInfo.avatar, userProfile, guildProfile, false);
 
         return (
-            <div className="bg-[#313338] p-4 rounded-lg font-sans text-[#dbdee1] w-full overflow-hidden">
+            <div className="bg-[#313338] p-4 rounded-lg font-sans text-[#dbdee1] w-full overflow-hidden border border-[#2e3035]">
                 <div className="flex items-start gap-3 w-full min-w-0">
-                    <img src={botInfo.avatar} className="w-10 h-10 rounded-full object-cover shrink-0" alt="Bot Avatar" />
+                    <img src={botInfo.avatar} className="w-10 h-10 rounded-full object-cover shrink-0" alt="Bot" />
                     <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-2">
-                            <span className="font-medium text-white hover:underline cursor-pointer truncate">{botInfo.name}</span>
+                            <span className="font-medium text-white">{botInfo.name}</span>
                             <span className="bg-[#5865f2] text-white text-[10px] px-1 rounded h-4 flex items-center shrink-0">BOT</span>
-                            <span className="text-xs text-[#949ba4] ml-1 shrink-0">Today at 12:00 PM</span>
+                            <span className="text-xs text-[#949ba4] ml-1">Today at 12:00 PM</span>
                         </div>
-                        {pMessage && <div className="mt-1 whitespace-pre-wrap break-words text-sm">{parseMarkdown(pMessage)}</div>}
+                        {pMessage && <div className="mt-1 whitespace-pre-wrap text-sm">{parseMarkdown(pMessage)}</div>}
                         
                         {useEmbed && (
-                            <div className="mt-2 bg-[#2b2d31] rounded flex max-w-[520px] w-full border-l-4 overflow-hidden" style={{ borderColor: embedData.color }}>
+                            <div className="mt-2 bg-[#2b2d31] rounded flex w-full border-l-4 overflow-hidden" style={{ borderColor: embedData.color }}>
                                 <div className="p-4 flex flex-col gap-2 flex-1 min-w-0">
                                     {pAuthorName && (
                                         <div className="flex items-center gap-2 text-sm font-bold text-white">
@@ -306,28 +336,26 @@ export default function JoinSettingsPage() {
                                             <span className="truncate">{pAuthorName}</span>
                                         </div>
                                     )}
-                                    {pTitle && <div className="font-bold text-white text-base break-words [word-break:break-word]">{parseMarkdown(pTitle)}</div>}
-                                    {pDesc && <div className="text-sm text-[#dbdee1] whitespace-pre-wrap break-words [word-break:break-word]">{parseMarkdown(pDesc)}</div>}
+                                    {pTitle && <div className="font-bold text-white text-base">{parseMarkdown(pTitle)}</div>}
+                                    {pDesc && <div className="text-sm text-[#dbdee1] whitespace-pre-wrap">{parseMarkdown(pDesc)}</div>}
                                     {pImage && <img src={pImage} className="w-full rounded mt-2 object-cover max-h-[300px]" alt="Main" />}
                                     {(pFooterText) && (
                                         <div className="flex items-start gap-2 text-xs text-[#949ba4] mt-1">
                                             {pFooterIcon && <img src={pFooterIcon} className="w-5 h-5 rounded-full shrink-0" alt="Footer" />}
-                                            <span className="break-words [word-break:break-word] min-w-0">{pFooterText}</span>
+                                            <span>{pFooterText}</span>
                                         </div>
                                     )}
                                 </div>
                                 {pThumbnail && <div className="p-4 pl-0 shrink-0"><img src={pThumbnail} className="w-20 h-20 rounded object-cover" alt="Thumb" /></div>}
                             </div>
                         )}
-
-                        {useImage && <ImagePreview />}
                     </div>
                 </div>
             </div>
         );
     };
 
-    // 🔥 ส่วนแสดงผล Preview แบบรูปภาพจริง (PNG)
+    // --- Image Preview Component ---
     const ImagePreview = () => {
         const [previewUrl, setPreviewUrl] = useState<string | null>(null);
         const [isLoading, setIsLoading] = useState(false);
@@ -336,11 +364,12 @@ export default function JoinSettingsPage() {
             const fetchPreview = async () => {
                 setIsLoading(true);
                 
-                // เตรียมข้อมูลสำหรับส่งไป Gen รูป
+                const pTitle = previewReplacer(imageData.image_title, botInfo.avatar, userProfile, guildProfile, true);
+                const pUsername = previewReplacer(imageData.image_username, botInfo.avatar, userProfile, guildProfile, true);
                 const pText = previewReplacer(imageData.text_content, botInfo.avatar, userProfile, guildProfile, true);
+                
                 const userAvatarExt = userProfile?.avatar?.startsWith("a_") ? "gif" : "png";
                 const userAvatarUrl = userProfile?.avatar ? `https://cdn.discordapp.com/avatars/${userProfile.id}/${userProfile.avatar}.${userAvatarExt}?size=256` : "https://cdn.discordapp.com/embed/avatars/0.png";
-                const username = userProfile?.global_name || userProfile?.username || "User";
 
                 try {
                     const res = await fetch(`${API_URL}/api/announcements/${guildId}/preview_join_image`, {
@@ -348,10 +377,22 @@ export default function JoinSettingsPage() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             bg_url: imageData.bg_url,
+                            image_title: pTitle,
+                            image_username: pUsername,
                             text_content: pText,
-                            text_color: imageData.text_color,
+                            
+                            font_name: imageData.font_name, // ส่ง Font ไปด้วย
+
                             avatar_url: userAvatarUrl,
-                            username: username
+                            avatar_shape: imageData.avatar_shape,
+                            overlay_opacity: imageData.overlay_opacity,
+                            image_position: imageData.image_position,
+                            
+                            title_color: imageData.title_color,
+                            username_color: imageData.username_color,
+                            message_color: imageData.message_color,
+                            circle_color: imageData.circle_color,
+                            overlay_color: imageData.overlay_color
                         })
                     });
 
@@ -367,22 +408,17 @@ export default function JoinSettingsPage() {
                 }
             };
 
-            // Debounce เพื่อไม่ให้ยิง request รัวเกินไปตอนพิมพ์
-            const timer = setTimeout(() => {
-                fetchPreview();
-            }, 800);
-
+            const timer = setTimeout(() => fetchPreview(), 800);
             return () => clearTimeout(timer);
-        }, [imageData, userProfile, guildProfile, guildId, API_URL]);
+        }, [imageData, userProfile, guildProfile, guildId, API_URL, botInfo]);
 
         return (
-            <div className="relative mt-2 max-w-[520px] w-full aspect-[2/1] rounded-lg overflow-hidden border border-[#1e1f22] shadow-md bg-[#232428] flex items-center justify-center">
+            <div className="relative w-full aspect-[2/1] rounded-lg overflow-hidden border border-[#1e1f22] shadow-md bg-[#232428] flex items-center justify-center">
                 {isLoading && (
                     <div className="absolute inset-0 z-20 bg-black/50 flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                     </div>
                 )}
-                
                 {previewUrl ? (
                     <img src={previewUrl} alt="Welcome Preview" className="w-full h-full object-cover" />
                 ) : (
@@ -393,147 +429,221 @@ export default function JoinSettingsPage() {
     };
 
     return (
-        <div className="flex flex-col pb-12 p-8 min-h-screen">
-            <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col pb-12 p-8 min-h-screen max-w-[1600px] mx-auto">
+            <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">ตั้งค่าข้อความต้อนรับ</h1>
-                    <p className="text-[#949ba4] text-sm">ออกแบบการ์ดต้อนรับของคุณให้สวยงาม</p>
+                    <h1 className="text-3xl font-bold text-white">Welcome Message Settings</h1>
+                    <p className="text-[#949ba4]">จัดการข้อความต้อนรับเมื่อมีคนเข้าเซิร์ฟเวอร์</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer scale-125 mr-4">
                     <input type="checkbox" className="sr-only peer" checked={isEnabled} onChange={(e) => toggleSwitch(e.target.checked)} />
                     <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#23a559]"></div>
                 </label>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-6 items-start">
-                <div className="lg:w-1/2 w-full flex flex-col gap-4">
-                    <div className="bg-[#1e1f22] p-4 rounded-xl border border-[#2e3035] shadow-lg sticky top-8">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-[#949ba4] text-xs font-bold uppercase">Live Preview</h3>
-                        </div>
-                        <EmbedPreview />
+            {/* General Settings */}
+            <div className="bg-[#2b2d31] p-6 rounded-xl border border-[#1e1f22] mb-8 shadow-lg">
+                <h2 className="text-lg font-bold text-white mb-4 border-b border-gray-600 pb-2">📂 การตั้งค่าทั่วไป (General)</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">ส่งไปที่ห้อง (Channel)</label>
+                        <select value={selectedChannel} onChange={(e) => setSelectedChannel(e.target.value)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-3 rounded border border-[#1e1f22] focus:outline-none focus:border-[#5865f2]">
+                            <option value="">-- เลือกห้อง --</option>
+                            {channels.map(c => <option key={c.id} value={c.id}># {c.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">ข้อความหลัก (Main Message)</label>
+                        <SmartInput value={message} onChange={setMessage} placeholder="ข้อความทักทาย (พิมพ์ { เพื่อเลือกตัวแปร)" className="w-full bg-[#1e1f22] text-[#dbdee1] p-3 rounded border border-[#1e1f22] focus:outline-none focus:border-[#5865f2]" />
                     </div>
                 </div>
-
-                <div className="lg:w-1/2 w-full">
-                    <form onSubmit={handleSave} className="space-y-6">
-                        <div className="bg-[#2b2d31] p-5 rounded-xl border border-[#1e1f22]">
-                            <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">ส่งไปที่ห้อง</label>
-                            <select value={selectedChannel} onChange={(e) => setSelectedChannel(e.target.value)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-3 rounded border border-[#1e1f22] focus:outline-none focus:border-[#5865f2]">
-                                <option value="">-- เลือกห้อง --</option>
-                                {channels.map(c => <option key={c.id} value={c.id}># {c.name}</option>)}
-                            </select>
-                        </div>
-
-                        <div className="bg-[#2b2d31] p-5 rounded-xl border border-[#1e1f22]">
-                            <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">ข้อความหลัก (นอก Embed/รูปภาพ)</label>
-                            <SmartInput 
-                                isTextarea={true}
-                                value={message} 
-                                onChange={setMessage}
-                                placeholder="ข้อความทักทาย (พิมพ์ { เพื่อเลือกตัวแปร)"
-                                className="w-full bg-[#1e1f22] text-[#dbdee1] p-3 rounded border border-[#1e1f22] h-20 focus:outline-none focus:border-[#5865f2] resize-y"
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between bg-[#2b2d31] p-5 rounded-xl border border-[#1e1f22]">
-                            <div>
-                                <h3 className="text-white font-bold">ใช้งาน Embed Message</h3>
-                                <p className="text-[#949ba4] text-xs">เปิดเพื่อใช้รูปแบบการ์ดแบบข้อความ</p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" className="sr-only peer" checked={useEmbed} onChange={(e) => setUseEmbed(e.target.checked)} />
-                                <div className="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#5865f2] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                            </label>
-                        </div>
-
-                        {useEmbed && (
-                            <div className="bg-[#2b2d31] p-5 rounded-xl border border-[#1e1f22] space-y-4">
-                                <div className="flex gap-4">
-                                    <div className="flex-1"><ImageInput label="Author Icon URL" value={embedData.author_icon} onChange={(v: string) => handleEmbedChange('author_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
-                                    <div className="flex-1">
-                                        <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Author Name</label>
-                                        <SmartInput value={embedData.author_name} onChange={(v: any) => handleEmbedChange('author_name', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22]" placeholder="พิมพ์ { เพื่อเลือกตัวแปร" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Title (หัวข้อ)</label>
-                                    <SmartInput value={embedData.title} onChange={(v: any) => handleEmbedChange('title', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] font-bold" placeholder="พิมพ์ { เพื่อเลือกตัวแปร" />
-                                </div>
-                                <div>
-                                    <div className="flex justify-between items-end mb-2">
-                                        <label className="block text-[#b5bac1] text-xs font-bold uppercase">Description (รายละเอียด)</label>
-                                        <span className={`text-xs ${embedData.description.length > 4096 ? 'text-red-500 font-bold' : 'text-[#949ba4]'}`}>{embedData.description.length} / 4096</span>
-                                    </div>
-                                    <SmartInput 
-                                        isTextarea={true} maxLength={4096}
-                                        value={embedData.description} onChange={(v: any) => handleEmbedChange('description', v)} 
-                                        placeholder="ใส่รายละเอียดการต้อนรับ (พิมพ์ { เพื่อเลือกตัวแปร)"
-                                        className={`w-full bg-[#1e1f22] text-[#dbdee1] p-3 rounded border ${embedData.description.length > 4096 ? 'border-red-500 focus:border-red-500' : 'border-[#1e1f22] focus:border-[#5865f2]'} min-h-[150px] resize-y focus:outline-none whitespace-pre-wrap`}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Embed Color</label>
-                                        <div className="flex gap-2">
-                                            <input type="color" value={embedData.color} onChange={(e) => handleEmbedChange('color', e.target.value)} className="h-10 w-12 bg-transparent border-none cursor-pointer" />
-                                            <input type="text" value={embedData.color} onChange={(e) => handleEmbedChange('color', e.target.value)} className="flex-1 bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] uppercase" />
-                                        </div>
-                                    </div>
-                                    <div><ImageInput label="Thumbnail URL" value={embedData.thumbnail} onChange={(v: string) => handleEmbedChange('thumbnail', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
-                                </div>
-                                <ImageInput label="Main Image URL" value={embedData.image} onChange={(v: string) => handleEmbedChange('image', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} />
-                                <div className="border-t border-[#1e1f22] pt-4 flex gap-4">
-                                    <div className="w-1/3"><ImageInput label="Footer Icon" value={embedData.footer_icon} onChange={(v: string) => handleEmbedChange('footer_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
-                                    <div className="flex-1">
-                                        <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Footer Text</label>
-                                        <SmartInput value={embedData.footer_text} onChange={(v: any) => handleEmbedChange('footer_text', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22]" placeholder="พิมพ์ { เพื่อเลือกตัวแปร" />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex items-center justify-between bg-[#2b2d31] p-5 rounded-xl border border-[#1e1f22]">
-                            <div>
-                                <h3 className="text-white font-bold">ใช้งานรูปภาพต้อนรับ (Welcome Image)</h3>
-                                <p className="text-[#949ba4] text-xs">บอทจะส่งรูปภาพสวยๆ แนบไปพร้อมข้อความ</p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" className="sr-only peer" checked={useImage} onChange={(e) => setUseImage(e.target.checked)} />
-                                <div className="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#5865f2] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                            </label>
-                        </div>
-
-                        {useImage && (
-                            <div className="bg-[#2b2d31] p-5 rounded-xl border border-[#1e1f22] space-y-4 animate-in fade-in slide-in-from-top-2">
-                                <ImageInput label="URL รูปภาพพื้นหลัง (Background)" value={imageData.bg_url} onChange={(v: string) => handleImageChange('bg_url', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} />
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                    <div className="flex-1">
-                                        <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">ข้อความใต้ชื่อ (Sub-Text)</label>
-                                        <SmartInput 
-                                            value={imageData.text_content} 
-                                            onChange={(v: any) => handleImageChange('text_content', v)} 
-                                            className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] focus:outline-none focus:border-[#5865f2]" 
-                                            placeholder="พิมพ์ { เพื่อเลือกตัวแปร" 
-                                        />
-                                    </div>
-                                    <div className="sm:w-1/3">
-                                        <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">สีตัวอักษร</label>
-                                        <div className="flex gap-2">
-                                            <input type="color" value={imageData.text_color} onChange={(e) => handleImageChange('text_color', e.target.value)} className="h-10 w-12 bg-transparent border-none cursor-pointer" />
-                                            <input type="text" value={imageData.text_color} onChange={(e) => handleImageChange('text_color', e.target.value)} className="flex-1 bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] uppercase focus:outline-none focus:border-[#5865f2]" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <button type="submit" className="w-full bg-[#23a559] hover:bg-[#1f934e] text-white font-bold py-3 rounded transition shadow-lg mt-4">
-                            💾 บันทึกการตั้งค่า
-                        </button>
-                    </form>
-                </div>
             </div>
+
+            {/* PART 1: EMBED MESSAGE */}
+            <div className="bg-[#2b2d31] p-6 rounded-xl border border-[#1e1f22] mb-8 shadow-lg">
+                <div className="flex items-center justify-between mb-6 border-b border-gray-600 pb-4">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">📝 Embed Message <span className="text-xs font-normal text-gray-400 bg-black/20 px-2 py-1 rounded">การ์ดข้อความ</span></h2>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <span className="mr-3 text-sm font-medium text-gray-300">{useEmbed ? 'ON' : 'OFF'}</span>
+                        <input type="checkbox" className="sr-only peer" checked={useEmbed} onChange={(e) => setUseEmbed(e.target.checked)} />
+                        <div className="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#5865f2] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                    </label>
+                </div>
+
+                {useEmbed && (
+                    <div className="flex flex-col xl:flex-row gap-8 animate-in fade-in slide-in-from-top-2">
+                        {/* Left: Form */}
+                        <div className="flex-1 space-y-4 order-2 xl:order-1">
+                             <div className="flex gap-4">
+                                <div className="flex-1"><ImageInput label="Author Icon" value={embedData.author_icon} onChange={(v: string) => handleEmbedChange('author_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
+                                <div className="flex-1">
+                                    <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Author Name</label>
+                                    <SmartInput value={embedData.author_name} onChange={(v: any) => handleEmbedChange('author_name', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22]" placeholder="{user.username}" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Title</label>
+                                <SmartInput value={embedData.title} onChange={(v: any) => handleEmbedChange('title', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] font-bold" />
+                            </div>
+                            <div>
+                                <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Description</label>
+                                <SmartInput isTextarea={true} maxLength={4096} value={embedData.description} onChange={(v: any) => handleEmbedChange('description', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-3 rounded border border-[#1e1f22] min-h-[100px]" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Color</label>
+                                    <div className="flex gap-2">
+                                        <input type="color" value={embedData.color} onChange={(e) => handleEmbedChange('color', e.target.value)} className="h-10 w-12 bg-transparent border-none cursor-pointer" />
+                                        <input type="text" value={embedData.color} onChange={(e) => handleEmbedChange('color', e.target.value)} className="flex-1 bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] uppercase" />
+                                    </div>
+                                </div>
+                                <div><ImageInput label="Thumbnail URL" value={embedData.thumbnail} onChange={(v: string) => handleEmbedChange('thumbnail', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
+                            </div>
+                            <ImageInput label="Image URL" value={embedData.image} onChange={(v: string) => handleEmbedChange('image', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} />
+                            <div className="flex gap-4 border-t border-[#3f4147] pt-4">
+                                <div className="w-1/3"><ImageInput label="Footer Icon" value={embedData.footer_icon} onChange={(v: string) => handleEmbedChange('footer_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
+                                <div className="flex-1">
+                                    <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Footer Text</label>
+                                    <SmartInput value={embedData.footer_text} onChange={(v: any) => handleEmbedChange('footer_text', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22]" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right: Preview (Sticky) */}
+                        <div className="flex-1 xl:max-w-[500px] order-1 xl:order-2">
+                             <div className="sticky top-6">
+                                <h3 className="text-[#949ba4] text-xs font-bold uppercase mb-2 text-right">Embed Preview</h3>
+                                <EmbedPreview />
+                             </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* PART 2: WELCOME IMAGE */}
+            <div className="bg-[#2b2d31] p-6 rounded-xl border border-[#1e1f22] shadow-lg">
+                <div className="flex items-center justify-between mb-6 border-b border-gray-600 pb-4">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">🖼️ Welcome Image <span className="text-xs font-normal text-gray-400 bg-black/20 px-2 py-1 rounded">รูปภาพต้อนรับ</span></h2>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <span className="mr-3 text-sm font-medium text-gray-300">{useImage ? 'ON' : 'OFF'}</span>
+                        <input type="checkbox" className="sr-only peer" checked={useImage} onChange={(e) => setUseImage(e.target.checked)} />
+                        <div className="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#5865f2] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                    </label>
+                </div>
+
+                {useImage && (
+                    <div className="flex flex-col xl:flex-row gap-8 animate-in fade-in slide-in-from-top-2">
+                        {/* Left: Form */}
+                        <div className="flex-1 space-y-5 order-2 xl:order-1">
+                            
+                            {/* Font Selection (New!) */}
+                            <div className="bg-[#1e1f22] p-4 rounded border border-[#3f4147]">
+                                <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">เลือกแบบอักษร (Font)</label>
+                                <select 
+                                    value={imageData.font_name} 
+                                    onChange={(e) => handleImageChange('font_name', e.target.value)}
+                                    className="w-full bg-[#2b2d31] text-white p-2 rounded border border-[#3f4147] focus:outline-none focus:border-[#5865f2]"
+                                >
+                                    {availableFonts.map(f => <option key={f} value={f}>{f}</option>)}
+                                </select>
+                                <p className="text-[10px] text-gray-400 mt-1">*เพิ่มฟอนต์ได้ที่โฟลเดอร์ <code>cogs/functions/announcements/fonts</code></p>
+                            </div>
+
+                            <ImageInput label="URL พื้นหลัง (Background Image)" value={imageData.bg_url} onChange={(v: string) => handleImageChange('bg_url', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} />
+                            
+                            {/* 3 Lines Configuration */}
+                            <div className="space-y-4 bg-[#1e1f22] p-4 rounded border border-[#3f4147]">
+                                <h3 className="text-white text-sm font-bold border-b border-gray-600 pb-2 mb-2">🔤 ตั้งค่าข้อความ 3 บรรทัด</h3>
+                                
+                                {/* Line 1: Title */}
+                                <div className="flex gap-4 items-end">
+                                    <div className="flex-1">
+                                        <label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">บรรทัดที่ 1 (Title)</label>
+                                        <SmartInput value={imageData.image_title} onChange={(v: any) => handleImageChange('image_title', v)} className="w-full bg-[#2b2d31] text-[#dbdee1] p-2 rounded border border-[#3f4147]" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">สี (Color)</label>
+                                        <div className="flex items-center gap-2 bg-[#2b2d31] p-1 rounded border border-[#3f4147] h-[38px]">
+                                            <input type="color" value={imageData.title_color} onChange={(e) => handleImageChange('title_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer p-0" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Line 2: Username */}
+                                <div className="flex gap-4 items-end">
+                                    <div className="flex-1">
+                                        <label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">บรรทัดที่ 2 (Username)</label>
+                                        <SmartInput value={imageData.image_username} onChange={(v: any) => handleImageChange('image_username', v)} className="w-full bg-[#2b2d31] text-[#dbdee1] p-2 rounded border border-[#3f4147]" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 bg-[#2b2d31] p-1 rounded border border-[#3f4147] h-[38px]">
+                                            <input type="color" value={imageData.username_color} onChange={(e) => handleImageChange('username_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer p-0" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Line 3: Sub-text */}
+                                <div className="flex gap-4 items-end">
+                                    <div className="flex-1">
+                                        <label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">บรรทัดที่ 3 (Sub-Text)</label>
+                                        <SmartInput value={imageData.text_content} onChange={(v: any) => handleImageChange('text_content', v)} className="w-full bg-[#2b2d31] text-[#dbdee1] p-2 rounded border border-[#3f4147]" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 bg-[#2b2d31] p-1 rounded border border-[#3f4147] h-[38px]">
+                                            <input type="color" value={imageData.message_color} onChange={(e) => handleImageChange('message_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer p-0" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Additional Config */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Avatar Shape</label>
+                                    <div className="flex bg-[#1e1f22] rounded p-1">
+                                        <button type="button" onClick={() => handleImageChange('avatar_shape', 'circle')} className={`flex-1 py-1 text-xs rounded transition ${imageData.avatar_shape === 'circle' ? 'bg-[#5865f2] text-white' : 'text-gray-400'}`}>Circle</button>
+                                        <button type="button" onClick={() => handleImageChange('avatar_shape', 'square')} className={`flex-1 py-1 text-xs rounded transition ${imageData.avatar_shape === 'square' ? 'bg-[#5865f2] text-white' : 'text-gray-400'}`}>Square</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Overlay Opacity: {imageData.overlay_opacity}%</label>
+                                    <input type="range" min="0" max="100" value={imageData.overlay_opacity} onChange={(e) => handleImageChange('overlay_opacity', Number(e.target.value))} className="w-full h-2 bg-[#1e1f22] rounded-lg appearance-none cursor-pointer accent-[#5865f2] mt-2" />
+                                </div>
+                            </div>
+                            
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">Circle Color</label>
+                                    <div className="flex items-center gap-2 bg-[#1e1f22] p-2 rounded border border-[#3f4147]">
+                                        <input type="color" value={imageData.circle_color} onChange={(e) => handleImageChange('circle_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer" />
+                                        <span className="text-xs text-gray-400">{imageData.circle_color}</span>
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">Overlay Color</label>
+                                    <div className="flex items-center gap-2 bg-[#1e1f22] p-2 rounded border border-[#3f4147]">
+                                        <input type="color" value={imageData.overlay_color} onChange={(e) => handleImageChange('overlay_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer" />
+                                        <span className="text-xs text-gray-400">{imageData.overlay_color}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right: Preview (Sticky) */}
+                        <div className="flex-1 xl:max-w-[500px] order-1 xl:order-2">
+                             <div className="sticky top-6">
+                                <h3 className="text-[#949ba4] text-xs font-bold uppercase mb-2 text-right">Image Preview</h3>
+                                <ImagePreview />
+                                <p className="text-[#949ba4] text-[10px] mt-2 text-right">*รูปภาพที่ได้จริงอาจแตกต่างเล็กน้อยขึ้นอยู่กับการประมวลผลของบอท</p>
+                             </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+            
+            <button type="submit" onClick={handleSave} className="fixed bottom-6 right-6 bg-[#23a559] hover:bg-[#1f934e] text-white font-bold py-3 px-8 rounded-full shadow-2xl transition-transform hover:scale-105 z-50 flex items-center gap-2">
+                <span>💾 Save Changes</span>
+            </button>
         </div>
     );
 }
