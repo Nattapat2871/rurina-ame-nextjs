@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
+import ProfileMenu from '@/components/ProfileMenu'; // 👈 นำเข้าตรงนี้ด้วยค่ะ
 import { useParams } from 'next/navigation';
 
-// ✅ แยก Component ย่อยออกมาไว้นอกสุด (แก้ Error: Component created during render)
 const LoadingView = () => (
     <div className="flex-1 p-10 animate-pulse">
         <div className="h-8 bg-[#3f4147] rounded w-1/4 mb-6"></div>
@@ -29,7 +29,6 @@ const InviteView = ({ inviteUrl }: { inviteUrl: string }) => (
     </div>
 );
 
-// ✅ Component หลัก
 export default function GuildLayout({ children }: { children: React.ReactNode }) {
     const params = useParams();
     const guildId = params.id as string;
@@ -57,7 +56,6 @@ export default function GuildLayout({ children }: { children: React.ReactNode })
         };
 
         checkBot();
-        // Polling เช็คสถานะทุก 3 วินาที
         const interval = setInterval(() => {
             if (isBotInGuild === false) checkBot();
         }, 3000);
@@ -67,19 +65,27 @@ export default function GuildLayout({ children }: { children: React.ReactNode })
 
     return (
         <div className="flex bg-[#313338] min-h-screen font-sans overflow-hidden">
-            {/* Sidebar แสดงผลตลอดเวลา ไม่ว่าจะโหลดเสร็จหรือไม่ */}
             <Sidebar guildId={guildId} />
             
-            {/* ส่วนเนื้อหาจะเปลี่ยนไปตามสถานะ */}
-            {isBotInGuild === null ? (
-                <LoadingView />
-            ) : isBotInGuild === false ? (
-                <InviteView inviteUrl={inviteUrl} />
-            ) : (
-                <div className="flex-1 overflow-y-auto">
-                    {children}
+            {/* 👇 จัดโครงสร้างแบบเดียวกับหน้าแรกเป๊ะเลยค่ะ */}
+            <div className="flex-1 flex flex-col h-screen relative">
+                
+                {/* 👇 แถบ Header ด้านบนสุด */}
+                <div className="h-16 border-b border-[#1e1f22] flex justify-end items-center px-8 shrink-0 bg-[#313338] z-10">
+                    <ProfileMenu />
                 </div>
-            )}
+
+                {/* ส่วนเนื้อหา */}
+                {isBotInGuild === null ? (
+                    <LoadingView />
+                ) : isBotInGuild === false ? (
+                    <InviteView inviteUrl={inviteUrl} />
+                ) : (
+                    <div className="flex-1 overflow-y-auto">
+                        {children}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
