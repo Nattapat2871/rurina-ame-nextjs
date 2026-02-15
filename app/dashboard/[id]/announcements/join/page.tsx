@@ -327,21 +327,67 @@ export default function JoinSettingsPage() {
         );
     };
 
+    // 🔥 ส่วนแสดงผล Preview แบบรูปภาพจริง (PNG)
     const ImagePreview = () => {
-        const pText = previewReplacer(imageData.text_content, botInfo.avatar, userProfile, guildProfile, true);
-        const username = userProfile?.global_name || userProfile?.username || "User";
-        const userAvatarExt = userProfile?.avatar?.startsWith("a_") ? "gif" : "png";
-        const userAvatarUrl = userProfile?.avatar ? `https://cdn.discordapp.com/avatars/${userProfile.id}/${userProfile.avatar}.${userAvatarExt}?size=256` : "https://cdn.discordapp.com/embed/avatars/0.png";
+        const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+        const [isLoading, setIsLoading] = useState(false);
+
+        useEffect(() => {
+            const fetchPreview = async () => {
+                setIsLoading(true);
+                
+                // เตรียมข้อมูลสำหรับส่งไป Gen รูป
+                const pText = previewReplacer(imageData.text_content, botInfo.avatar, userProfile, guildProfile, true);
+                const userAvatarExt = userProfile?.avatar?.startsWith("a_") ? "gif" : "png";
+                const userAvatarUrl = userProfile?.avatar ? `https://cdn.discordapp.com/avatars/${userProfile.id}/${userProfile.avatar}.${userAvatarExt}?size=256` : "https://cdn.discordapp.com/embed/avatars/0.png";
+                const username = userProfile?.global_name || userProfile?.username || "User";
+
+                try {
+                    const res = await fetch(`${API_URL}/api/announcements/${guildId}/preview_join_image`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            bg_url: imageData.bg_url,
+                            text_content: pText,
+                            text_color: imageData.text_color,
+                            avatar_url: userAvatarUrl,
+                            username: username
+                        })
+                    });
+
+                    if (res.ok) {
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        setPreviewUrl(url);
+                    }
+                } catch (e) {
+                    console.error("Preview failed", e);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            // Debounce เพื่อไม่ให้ยิง request รัวเกินไปตอนพิมพ์
+            const timer = setTimeout(() => {
+                fetchPreview();
+            }, 800);
+
+            return () => clearTimeout(timer);
+        }, [imageData, userProfile, guildProfile, guildId, API_URL]);
 
         return (
-            <div className="relative mt-2 max-w-[520px] w-full aspect-[2/1] rounded-lg overflow-hidden border border-[#1e1f22] shadow-md select-none">
-                {imageData.bg_url ? ( <img src={imageData.bg_url} alt="Background" className="absolute inset-0 w-full h-full object-cover" /> ) : ( <div className="absolute inset-0 bg-[#232428] flex items-center justify-center text-[#949ba4] text-xs">ไม่มีรูปพื้นหลัง</div> )}
-                <div className="absolute inset-0 bg-black/40"></div>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-4 text-center">
-                    <img src={userAvatarUrl} alt="Avatar" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-[#2b2d31] shadow-lg mb-2 object-cover" />
-                    <h2 className="text-xl sm:text-2xl font-black drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] truncate w-full" style={{ color: imageData.text_color }}>{username}</h2>
-                    <p className="text-xs sm:text-sm font-medium drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] mt-1 truncate w-full" style={{ color: imageData.text_color }}>{pText}</p>
-                </div>
+            <div className="relative mt-2 max-w-[520px] w-full aspect-[2/1] rounded-lg overflow-hidden border border-[#1e1f22] shadow-md bg-[#232428] flex items-center justify-center">
+                {isLoading && (
+                    <div className="absolute inset-0 z-20 bg-black/50 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    </div>
+                )}
+                
+                {previewUrl ? (
+                    <img src={previewUrl} alt="Welcome Preview" className="w-full h-full object-cover" />
+                ) : (
+                    <div className="text-[#949ba4] text-xs">กำลังโหลดตัวอย่าง...</div>
+                )}
             </div>
         );
     };
