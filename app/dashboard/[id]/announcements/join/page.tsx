@@ -187,7 +187,24 @@ export default function JoinSettingsPage() {
     const [useEmbed, setUseEmbed] = useState(false);
     const [embedData, setEmbedData] = useState<EmbedData>({ author_name: "", author_icon: "", title: "", description: "", url: "", color: "#5865f2", thumbnail: "", image: "", footer_text: "", footer_icon: "", timestamp_mode: "none", custom_timestamp: "", fields: [] });
     const [useImage, setUseImage] = useState(false);
-    const [imageData, setImageData] = useState<ImageData>({ bg_url: "", image_title: "WELCOME", image_username: "{user.username}", text_content: "Welcome to {server.name}!", font_name: "Kanit-Regular.ttf", avatar_shape: "circle", overlay_opacity: 50, image_position: "left", title_color: "#FFFFFF", username_color: "#00FFFF", message_color: "#FFFFFF", circle_color: "#FFFFFF", overlay_color: "#000000" });
+
+    // 📍 Update Default Image Settings Here
+    const [imageData, setImageData] = useState<ImageData>({ 
+        bg_url: "https://i.pinimg.com/1200x/db/11/74/db1174ef4af95531ab9f5b274af52373.jpg", 
+        image_title: "WELCOME", 
+        image_username: "{user.username}", 
+        text_content: "Welcome to {server.name}!", 
+        font_name: "discord", 
+        avatar_shape: "circle", 
+        overlay_opacity: 50, 
+        image_position: "center", 
+        title_color: "#80c8ff", 
+        username_color: "#478f2d", 
+        message_color: "#f4ff5c", 
+        circle_color: "#545c24", 
+        overlay_color: "#000000" 
+    });
+
     const [initialSettings, setInitialSettings] = useState<JoinSettings | null>(null); const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
