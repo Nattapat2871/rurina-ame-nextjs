@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
-import ProfileMenu from '@/components/ProfileMenu'; // 👈 นำเข้าตรงนี้ด้วยค่ะ
+import ProfileMenu from '@/components/ProfileMenu'; 
 import { useParams } from 'next/navigation';
+import { Menu } from 'lucide-react'; // 👈 นำเข้าไอคอนแฮมเบอร์เกอร์
 
 const LoadingView = () => (
     <div className="flex-1 p-10 animate-pulse">
@@ -36,6 +37,7 @@ export default function GuildLayout({ children }: { children: React.ReactNode })
     
     const [isBotInGuild, setIsBotInGuild] = useState<boolean | null>(null);
     const [inviteUrl, setInviteUrl] = useState("");
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false); // 📍 State ควบคุม Sidebar บนมือถือ
 
     useEffect(() => {
         const checkBot = async () => {
@@ -64,18 +66,35 @@ export default function GuildLayout({ children }: { children: React.ReactNode })
     }, [guildId, isBotInGuild, API_URL]);
 
     return (
-        <div className="flex bg-[#313338] min-h-screen font-sans overflow-hidden">
-            <Sidebar guildId={guildId} />
+        <div className="flex bg-[#313338] min-h-screen font-sans overflow-hidden relative">
             
-            {/* 👇 จัดโครงสร้างแบบเดียวกับหน้าแรกเป๊ะเลยค่ะ */}
-            <div className="flex-1 flex flex-col h-screen relative">
+            {/* 📍 ฉากหลังสีดำตอนเปิด Sidebar บนมือถือ */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm transition-opacity duration-300"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            {/* 📍 ตัว Sidebar ที่สไลด์เข้า-ออกได้บนมือถือ */}
+            <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+                <Sidebar guildId={guildId} onClose={() => setIsSidebarOpen(false)} />
+            </div>
+            
+            <div className="flex-1 flex flex-col h-screen relative min-w-0">
                 
-                {/* 👇 แถบ Header ด้านบนสุด */}
-                <div className="h-16 border-b border-[#1e1f22] flex justify-end items-center px-8 shrink-0 bg-[#313338] z-10">
+                <div className="h-16 border-b border-[#1e1f22] flex justify-between lg:justify-end items-center px-4 lg:px-8 shrink-0 bg-[#313338] z-10">
+                    {/* 📍 ปุ่มแฮมเบอร์เกอร์ โชว์เฉพาะมือถือ/แท็บเล็ต */}
+                    <button 
+                        onClick={() => setIsSidebarOpen(true)} 
+                        className="lg:hidden p-2 -ml-2 text-[#dbdee1] hover:text-white transition-colors rounded-md hover:bg-[#3f4147]"
+                    >
+                        <Menu className="w-6 h-6" />
+                    </button>
+                    
                     <ProfileMenu />
                 </div>
 
-                {/* ส่วนเนื้อหา */}
                 {isBotInGuild === null ? (
                     <LoadingView />
                 ) : isBotInGuild === false ? (

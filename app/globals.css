@@ -24,3 +24,38 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ==========================================
+   🎨 Global Custom Scrollbar (เข้าธีมเว็บ)
+   ========================================== */
+
+/* 📍 สำหรับ Firefox */
+* {
+  scrollbar-width: thin; /* ทำให้บางลง */
+  scrollbar-color: #3f4147 transparent; /* สี Thumb และ Track */
+}
+
+/* 📍 สำหรับ Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 6px; /* ความกว้างแนวตั้ง (บางกำลังดี) */
+  height: 6px; /* ความสูงแนวนอน */
+}
+
+/* พื้นหลังของ Scrollbar */
+::-webkit-scrollbar-track {
+  background: transparent; 
+  border-radius: 10px;
+}
+
+/* ตัวจับ Scrollbar */
+::-webkit-scrollbar-thumb {
+  background-color: #3f4147; /* สีเทาเข้มเข้ากับธีม */
+  border-radius: 10px; /* ขอบมนสวยๆ */
+  border: 1px solid transparent; /* เว้นระยะขอบนิดนึงให้ดูมีมิติ */
+  background-clip: padding-box;
+}
+
+/* ตอนเอาเมาส์ไปชี้ Scrollbar */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #5865f2; /* เปลี่ยนเป็นสี Blurple ให้รู้ว่ากำลัง Hover */
+}
