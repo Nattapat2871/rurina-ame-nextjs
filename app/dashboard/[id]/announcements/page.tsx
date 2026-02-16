@@ -12,12 +12,13 @@ export default function AnnouncementsPage() {
   const [joinEnabled, setJoinEnabled] = useState<boolean>(false);
   const [leaveEnabled, setLeaveEnabled] = useState<boolean>(false); // สมมติว่ามี leave ด้วย
   const [loading, setLoading] = useState(true);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   // Fetch Status
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    fetch(`http://localhost:5000/api/announcements/${id}/status`)
+    fetch(`${API_URL}/api/announcements/${id}/status`, { credentials: 'include' })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch status");
         return res.json();
@@ -29,17 +30,18 @@ export default function AnnouncementsPage() {
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, API_URL]);
 
   const toggleJoin = async (checked: boolean) => {
     // Optimistic Update: เปลี่ยน UI ทันทีไม่ต้องรอเซิร์ฟเวอร์
     setJoinEnabled(checked);
     
     try {
-      const res = await fetch(`http://localhost:5000/api/announcements/${id}/toggle_join`, {
+      const res = await fetch(`${API_URL}/api/announcements/${id}/toggle_join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: checked }),
+        credentials: 'include',
       });
       if (!res.ok) {
         // ถ้าพังให้เปลี่ยนกลับ
@@ -77,7 +79,7 @@ export default function AnnouncementsPage() {
                 checked={joinEnabled} 
                 onChange={(e) => toggleJoin(e.target.checked)} 
               />
-              <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+              <div className="relative w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
             </label>
           </div>
           

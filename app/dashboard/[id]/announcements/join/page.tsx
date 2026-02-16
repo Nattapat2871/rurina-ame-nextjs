@@ -470,10 +470,10 @@ export default function JoinSettingsPage() {
     // --- Image Preview ---
     const ImagePreview = () => {
         const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-        const [isLoading, setIsLoading] = useState(false);
+
         useEffect(() => {
-            const fetchPreview = async () => {
-                setIsLoading(true);
+            let isCancelled = false;
+            const timer = setTimeout(async () => {
                 const pTitle = previewReplacer(imageData.image_title, botInfo.avatar, userProfile, guildProfile, true);
                 const pUsername = previewReplacer(imageData.image_username, botInfo.avatar, userProfile, guildProfile, true);
                 const pText = previewReplacer(imageData.text_content, botInfo.avatar, userProfile, guildProfile, true);
@@ -490,17 +490,42 @@ export default function JoinSettingsPage() {
                             title_color: imageData.title_color, username_color: imageData.username_color, message_color: imageData.message_color, circle_color: imageData.circle_color, overlay_color: imageData.overlay_color
                         })
                     });
-                    if (res.ok) { const blob = await res.blob(); setPreviewUrl(URL.createObjectURL(blob)); }
-                } catch (e) { console.error("Preview failed", e); } finally { setIsLoading(false); }
+                    if (res.ok && !isCancelled) {
+                        const blob = await res.blob();
+                        const newUrl = URL.createObjectURL(blob);
+                        setPreviewUrl(prevUrl => {
+                            if (prevUrl) {
+                                URL.revokeObjectURL(prevUrl);
+                            }
+                            return newUrl;
+                        });
+                    }
+                } catch (e) {
+                    console.error("Preview failed", e);
+                }
+            }, 800);
+
+            return () => {
+                isCancelled = true;
+                clearTimeout(timer);
             };
-            const timer = setTimeout(() => fetchPreview(), 800);
-            return () => clearTimeout(timer);
         }, [imageData, userProfile, guildProfile, guildId, API_URL, botInfo.avatar]);
+        
+        // Clean up the final URL when the component unmounts
+        useEffect(() => {
+            return () => {
+                if (previewUrl) {
+                    URL.revokeObjectURL(previewUrl);
+                }
+            };
+        }, [previewUrl]);
 
         return (
             <div className="relative w-full aspect-[1000/480] rounded-lg overflow-hidden border border-[#1e1f22] shadow-md bg-[#232428] flex items-center justify-center">
-                {isLoading && (<div className="absolute inset-0 z-20 bg-black/50 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>)}
-                {previewUrl ? (<img src={previewUrl} alt="Welcome Preview" className="w-full h-full object-contain" />) : (<div className="text-[#949ba4] text-xs">กำลังโหลดตัวอย่าง...</div>)}
+                {previewUrl ?
+                    (<img src={previewUrl} alt="Welcome Preview" className="w-full h-full object-contain" />) :
+                    (<div className="text-[#949ba4] text-xs">กำลังโหลดตัวอย่าง...</div>)
+                }
             </div>
         );
     };
