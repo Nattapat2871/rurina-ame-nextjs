@@ -1,8 +1,95 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, ChangeEvent, FocusEvent, MouseEvent, FormEvent } from 'react';
 import { useParams } from 'next/navigation';
 import Swal from 'sweetalert2';
+
+// --- 🟦 TypeScript Interfaces ---
+interface UserProfile {
+    username: string;
+    global_name: string;
+    id: string;
+    avatar: string;
+}
+
+interface GuildProfile {
+    name: string;
+    id: string;
+    icon: string;
+    approximate_member_count?: number;
+    member_count?: number;
+}
+
+interface Channel {
+    id: string;
+    name: string;
+}
+
+interface BotInfo {
+    name: string;
+    avatar: string;
+}
+
+interface EmbedData {
+    author_name: string;
+    author_icon: string;
+    title: string;
+    description: string;
+    url: string;
+    color: string;
+    thumbnail: string;
+    image: string;
+    footer_text: string;
+    footer_icon: string;
+    timestamp_mode: 'none' | 'current' | 'custom';
+    custom_timestamp: string;
+}
+
+interface ImageData {
+    bg_url: string;
+    image_title: string;
+    image_username: string;
+    text_content: string;
+    font_name: string;
+    avatar_shape: 'circle' | 'square';
+    overlay_opacity: number;
+    image_position: 'left' | 'center' | 'right' | 'text';
+    title_color: string;
+    username_color: string;
+    message_color: string;
+    circle_color: string;
+    overlay_color: string;
+}
+
+interface SmartInputProps {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    className?: string;
+    isTextarea?: boolean;
+    maxLength?: number;
+}
+
+interface ImageInputProps {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    botAvatar: string;
+    userReal: UserProfile | null;
+    guildReal: GuildProfile | null;
+}
+
+interface JoinSettings {
+    isEnabled: boolean;
+    selectedChannel: string;
+    message: string;
+    useEmbed: boolean;
+    embedData: EmbedData;
+    useImage: boolean;
+    imageData: ImageData;
+}
+
+
 
 // --- 📜 รายการตัวแปร ---
 const AVAILABLE_VARS = [
@@ -22,15 +109,16 @@ const AVAILABLE_VARS = [
 ];
 
 // --- 🧠 SmartInput Component ---
-const SmartInput = ({ value, onChange, placeholder, className, isTextarea = false, maxLength }: any) => {
+const SmartInput = ({ value, onChange, placeholder, className, isTextarea = false, maxLength }: SmartInputProps) => {
     const [showMenu, setShowMenu] = useState(false);
     const [filter, setFilter] = useState("");
     const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
-    const handleChange = (e: any) => {
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const val = e.target.value;
         onChange(val);
         const cursor = e.target.selectionStart;
+        if (cursor === null) return;
         const textBeforeCursor = val.slice(0, cursor);
         const match = textBeforeCursor.match(/\{([a-zA-Z0-9._@#:]*)$/);
         if (match) { setShowMenu(true); setFilter(match[1].toLowerCase()); } else { setShowMenu(false); }
@@ -39,6 +127,7 @@ const SmartInput = ({ value, onChange, placeholder, className, isTextarea = fals
     const insertVar = (varName: string) => {
         if (!inputRef.current) return;
         const cursor = inputRef.current.selectionStart;
+        if (cursor === null) return;
         const textBeforeCursor = value.slice(0, cursor);
         const textAfterCursor = value.slice(cursor);
         const match = textBeforeCursor.match(/\{([a-zA-Z0-9._@#:]*)$/);
@@ -47,7 +136,13 @@ const SmartInput = ({ value, onChange, placeholder, className, isTextarea = fals
             const newText = value.slice(0, startPos) + `{${varName}}` + textAfterCursor;
             onChange(newText);
             setShowMenu(false);
-            setTimeout(() => { inputRef.current?.focus(); inputRef.current?.setSelectionRange(startPos + varName.length + 2, startPos + varName.length + 2); }, 0);
+            setTimeout(() => {
+                if (inputRef.current) {
+                    inputRef.current.focus();
+                    const newCursorPos = startPos + varName.length + 2;
+                    inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+                }
+            }, 0);
         }
     };
 
@@ -56,14 +151,14 @@ const SmartInput = ({ value, onChange, placeholder, className, isTextarea = fals
     return (
         <div className="relative w-full">
             {isTextarea ? (
-                <textarea ref={inputRef as any} value={value} onChange={handleChange} className={className} placeholder={placeholder} maxLength={maxLength} onBlur={() => setTimeout(() => setShowMenu(false), 200)} />
+                <textarea ref={inputRef as React.RefObject<HTMLTextAreaElement>} value={value} onChange={handleChange} className={className} placeholder={placeholder} maxLength={maxLength} onBlur={() => setTimeout(() => setShowMenu(false), 200)} />
             ) : (
-                <input ref={inputRef as any} type="text" value={value} onChange={handleChange} className={className} placeholder={placeholder} maxLength={maxLength} onBlur={() => setTimeout(() => setShowMenu(false), 200)} />
+                <input ref={inputRef as React.RefObject<HTMLInputElement>} type="text" value={value} onChange={handleChange} className={className} placeholder={placeholder} maxLength={maxLength} onBlur={() => setTimeout(() => setShowMenu(false), 200)} />
             )}
             {showMenu && filteredVars.length > 0 && (
                 <div className="absolute z-50 bg-[#2b2d31] border border-[#1e1f22] rounded shadow-xl mt-1 max-h-48 overflow-y-auto w-full sm:w-64 text-sm custom-scrollbar" style={{ top: '100%', left: 0 }}>
                     {filteredVars.map(v => (
-                        <div key={v.name} onMouseDown={(e) => { e.preventDefault(); insertVar(v.name); }} className="px-3 py-2 hover:bg-[#3f4147] cursor-pointer flex justify-between items-center transition-colors border-b border-[#1e1f22] last:border-0">
+                        <div key={v.name} onMouseDown={(e: MouseEvent<HTMLDivElement>) => { e.preventDefault(); insertVar(v.name); }} className="px-3 py-2 hover:bg-[#3f4147] cursor-pointer flex justify-between items-center transition-colors border-b border-[#1e1f22] last:border-0">
                             <span className="font-bold text-[#dbdee1] font-mono text-xs">{`{${v.name}}`}</span>
                             <span className="text-[#949ba4] text-[10px] bg-[#1e1f22] px-2 py-0.5 rounded">{v.desc}</span>
                         </div>
@@ -96,7 +191,7 @@ const parseMarkdown = (text: string) => {
     });
 };
 
-const previewReplacer = (text: string, botAvatar: string, userReal: any, guildReal: any, isTextOnly: boolean = false) => {
+const previewReplacer = (text: string, botAvatar: string, userReal: UserProfile | null, guildReal: GuildProfile | null, isTextOnly: boolean = false): string => {
     if (!text) return "";
     let msg = text;
 
@@ -128,7 +223,7 @@ const previewReplacer = (text: string, botAvatar: string, userReal: any, guildRe
     msg = msg.replace(/\{server\.name\}/gi, serverName);
     msg = msg.replace(/\{server\.id\}/gi, serverId);
     msg = msg.replace(/\{server\.icon\}/gi, serverIconUrl); 
-    msg = msg.replace(/\{membercount\}/gi, realMemberCount);
+    msg = msg.replace(/\{membercount\}/gi, String(realMemberCount));
     msg = msg.replace(/\{membercount\.ordinal\}/gi, `${realMemberCount}th`);
     
     msg = msg.replace(/\{#(.*?)\}/g, (match, p1) => isTextOnly ? `#${p1}` : `<#${p1}>`);
@@ -138,7 +233,7 @@ const previewReplacer = (text: string, botAvatar: string, userReal: any, guildRe
     return msg;
 };
 
-const ImageInput = ({ label, value, onChange, botAvatar, userReal, guildReal }: any) => {
+const ImageInput = ({ label, value, onChange, botAvatar, userReal, guildReal }: ImageInputProps) => {
     const [preview, setPreview] = useState("");
     useEffect(() => {
         if (!value) { setPreview(""); return; }
@@ -174,18 +269,18 @@ export default function JoinSettingsPage() {
     const guildId = params.id;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-    const [channels, setChannels] = useState<any[]>([]);
-    const [userProfile, setUserProfile] = useState<any>(null); 
-    const [guildProfile, setGuildProfile] = useState<any>(null);
+    const [channels, setChannels] = useState<Channel[]>([]);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null); 
+    const [guildProfile, setGuildProfile] = useState<GuildProfile | null>(null);
     const [availableFonts, setAvailableFonts] = useState<string[]>(["Default"]);
     const [selectedChannel, setSelectedChannel] = useState("");
     const [message, setMessage] = useState("");
     const [isEnabled, setIsEnabled] = useState(false);
-    const [botInfo, setBotInfo] = useState({ name: "Bot", avatar: "https://cdn.discordapp.com/embed/avatars/0.png" });
+    const [botInfo, setBotInfo] = useState<BotInfo>({ name: "Bot", avatar: "https://cdn.discordapp.com/embed/avatars/0.png" });
     
     // --- Embed State ---
     const [useEmbed, setUseEmbed] = useState(false);
-    const [embedData, setEmbedData] = useState({
+    const [embedData, setEmbedData] = useState<EmbedData>({
         author_name: "", author_icon: "", title: "", description: "", url: "", color: "#5865f2",
         thumbnail: "", image: "", footer_text: "", footer_icon: "", 
         timestamp_mode: "none", // none | current | custom
@@ -194,11 +289,14 @@ export default function JoinSettingsPage() {
 
     // --- Image State ---
     const [useImage, setUseImage] = useState(false);
-    const [imageData, setImageData] = useState({
+    const [imageData, setImageData] = useState<ImageData>({
         bg_url: "", image_title: "WELCOME", image_username: "{user.username}", text_content: "Welcome to {server.name}!",
         font_name: "Default", avatar_shape: "circle", overlay_opacity: 50, image_position: "left",
         title_color: "#FFFFFF", username_color: "#00FFFF", message_color: "#FFFFFF", circle_color: "#FFFFFF", overlay_color: "#000000"
     });
+
+    const [initialSettings, setInitialSettings] = useState<JoinSettings | null>(null);
+    const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
         fetch(`${API_URL}/api/auth/me`, { credentials: 'include' }).then(res => res.json()).then(data => { if (!data.error) setUserProfile(data); });
@@ -211,23 +309,54 @@ export default function JoinSettingsPage() {
         fetch(`${API_URL}/api/announcements/${guildId}/status`, { credentials: 'include' })
             .then(res => res.json())
             .then(data => {
+                const fetchedSettings: JoinSettings = {
+                    isEnabled: data.is_welcome_enabled || false,
+                    selectedChannel: data.welcome_channel_id || "",
+                    message: data.welcome_message || "",
+                    useEmbed: data.use_embed || false,
+                    embedData: { ...embedData, ...(data.embed_data || {}) },
+                    useImage: data.use_image || false,
+                    imageData: { ...imageData, ...(data.image_data || {}) }
+                };
+
                 if (data.bot_avatar) setBotInfo({ name: data.bot_name, avatar: data.bot_avatar });
-                setSelectedChannel(data.welcome_channel_id || "");
-                setMessage(data.welcome_message || "");
-                setIsEnabled(data.is_welcome_enabled || false);
-                setUseEmbed(data.use_embed || false);
-                if (data.embed_data && Object.keys(data.embed_data).length > 0) {
-                    setEmbedData(prev => ({ ...prev, ...data.embed_data }));
-                }
-                setUseImage(data.use_image || false);
-                if (data.image_data) { setImageData(prev => ({ ...prev, ...data.image_data, font_name: data.image_data.font_name || "Default" })); }
+                
+                setIsEnabled(fetchedSettings.isEnabled);
+                setSelectedChannel(fetchedSettings.selectedChannel);
+                setMessage(fetchedSettings.message);
+                setUseEmbed(fetchedSettings.useEmbed);
+                setEmbedData(fetchedSettings.embedData);
+                setUseImage(fetchedSettings.useImage);
+                setImageData(fetchedSettings.imageData);
+
+                setInitialSettings(fetchedSettings);
             });
     }, [guildId, API_URL]);
 
-    const handleEmbedChange = (key: string, value: any) => setEmbedData(prev => ({ ...prev, [key]: value }));
-    const handleImageChange = (key: string, value: any) => setImageData(prev => ({ ...prev, [key]: value }));
+    useEffect(() => {
+        if (!initialSettings) return;
 
-    const handleSave = async (e: React.FormEvent) => {
+        const currentSettings: JoinSettings = {
+            isEnabled,
+            selectedChannel,
+            message,
+            useEmbed,
+            embedData,
+            useImage,
+            imageData
+        };
+
+        // A simple deep comparison
+        const hasChanged = JSON.stringify(currentSettings) !== JSON.stringify(initialSettings);
+        setIsDirty(hasChanged);
+
+    }, [isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData, initialSettings]);
+
+
+    const handleEmbedChange = (key: keyof EmbedData, value: string) => setEmbedData(prev => ({ ...prev, [key]: value }));
+    const handleImageChange = (key: keyof ImageData, value: string | number) => setImageData(prev => ({ ...prev, [key]: value }));
+
+    const handleSave = async (e: FormEvent) => {
         e.preventDefault();
         const payload = {
             channel_id: selectedChannel, message: message,
@@ -235,8 +364,33 @@ export default function JoinSettingsPage() {
             use_image: useImage, image_data: imageData
         };
         const res = await fetch(`${API_URL}/api/announcements/${guildId}/save_join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include' });
-        if (res.ok) Swal.fire({ title: 'บันทึกสำเร็จ!', icon: 'success', background: '#2b2d31', color: '#dbdee1', confirmButtonColor: '#5865f2', timer: 1500 });
-        else Swal.fire({ title: 'เกิดข้อผิดพลาด!', text: 'บันทึกไม่สำเร็จ', icon: 'error', background: '#2b2d31', color: '#dbdee1', confirmButtonColor: '#5865f2' });
+        if (res.ok) {
+            Swal.fire({ title: 'บันทึกสำเร็จ!', icon: 'success', background: '#2b2d31', color: '#dbdee1', confirmButtonColor: '#5865f2', timer: 1500 });
+            const newInitialSettings: JoinSettings = {
+                isEnabled,
+                selectedChannel,
+                message,
+                useEmbed,
+                embedData,
+                useImage,
+                imageData
+            };
+            setInitialSettings(newInitialSettings);
+        } else {
+            Swal.fire({ title: 'เกิดข้อผิดพลาด!', text: 'บันทึกไม่สำเร็จ', icon: 'error', background: '#2b2d31', color: '#dbdee1', confirmButtonColor: '#5865f2' });
+        }
+    };
+
+    const handleReset = () => {
+        if (initialSettings) {
+            setIsEnabled(initialSettings.isEnabled);
+            setSelectedChannel(initialSettings.selectedChannel);
+            setMessage(initialSettings.message);
+            setUseEmbed(initialSettings.useEmbed);
+            setEmbedData(initialSettings.embedData);
+            setUseImage(initialSettings.useImage);
+            setImageData(initialSettings.imageData);
+        }
     };
 
     const toggleSwitch = async (checked: boolean) => {
@@ -341,7 +495,7 @@ export default function JoinSettingsPage() {
             };
             const timer = setTimeout(() => fetchPreview(), 800);
             return () => clearTimeout(timer);
-        }, [imageData, userProfile, guildProfile, guildId, API_URL, botInfo]);
+        }, [imageData, userProfile, guildProfile, guildId, API_URL, botInfo.avatar]);
 
         return (
             <div className="relative w-full aspect-[1000/480] rounded-lg overflow-hidden border border-[#1e1f22] shadow-md bg-[#232428] flex items-center justify-center">
@@ -355,7 +509,7 @@ export default function JoinSettingsPage() {
         <div className="flex flex-col pb-12 p-8 min-h-screen max-w-[1600px] mx-auto">
             <div className="flex justify-between items-center mb-8">
                 <div><h1 className="text-3xl font-bold text-white">Welcome Message Settings</h1><p className="text-[#949ba4]">จัดการข้อความต้อนรับเมื่อมีคนเข้าเซิร์ฟเวอร์</p></div>
-                <label className="relative inline-flex items-center cursor-pointer scale-125 mr-4"><input type="checkbox" className="sr-only peer" checked={isEnabled} onChange={(e) => toggleSwitch(e.target.checked)} /><div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#23a559]"></div></label>
+                <label className="relative inline-flex items-center cursor-pointer scale-125 mr-4"><input type="checkbox" className="sr-only peer" checked={isEnabled} onChange={(e) => toggleSwitch(e.target.checked)} /><div className="relative w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#23a559]"></div></label>
             </div>
 
             <div className="bg-[#2b2d31] p-6 rounded-xl border border-[#1e1f22] mb-8 shadow-lg">
@@ -367,17 +521,17 @@ export default function JoinSettingsPage() {
             </div>
 
             <div className="bg-[#2b2d31] p-6 rounded-xl border border-[#1e1f22] mb-8 shadow-lg">
-                <div className="flex items-center justify-between mb-6 border-b border-gray-600 pb-4"><h2 className="text-xl font-bold text-white flex items-center gap-2">📝 Embed Message <span className="text-xs font-normal text-gray-400 bg-black/20 px-2 py-1 rounded">การ์ดข้อความ</span></h2><label className="relative inline-flex items-center cursor-pointer"><span className="mr-3 text-sm font-medium text-gray-300">{useEmbed ? 'ON' : 'OFF'}</span><input type="checkbox" className="sr-only peer" checked={useEmbed} onChange={(e) => setUseEmbed(e.target.checked)} /><div className="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#5865f2] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div>
+                <div className="flex items-center justify-between mb-6 border-b border-gray-600 pb-4"><h2 className="text-xl font-bold text-white flex items-center gap-2">📝 Embed Message <span className="text-xs font-normal text-gray-400 bg-black/20 px-2 py-1 rounded">การ์ดข้อความ</span></h2><label className="relative inline-flex items-center cursor-pointer"><span className="mr-3 text-sm font-medium text-gray-300">{useEmbed ? 'ON' : 'OFF'}</span><input type="checkbox" className="sr-only peer" checked={useEmbed} onChange={(e) => setUseEmbed(e.target.checked)} /><div className="relative w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#5865f2] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div>
 
                 {useEmbed && (
                     <div className="flex flex-col xl:flex-row gap-8 animate-in fade-in slide-in-from-top-2">
                         <div className="flex-1 space-y-4 order-2 xl:order-1">
                              <div className="flex gap-4">
                                 <div className="flex-1"><ImageInput label="Author Icon" value={embedData.author_icon} onChange={(v: string) => handleEmbedChange('author_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
-                                <div className="flex-1"><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Author Name</label><SmartInput value={embedData.author_name} onChange={(v: any) => handleEmbedChange('author_name', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22]" placeholder="{user.username}" /></div>
+                                <div className="flex-1"><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Author Name</label><SmartInput value={embedData.author_name} onChange={(v: string) => handleEmbedChange('author_name', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22]" placeholder="{user.username}" /></div>
                             </div>
-                            <div><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Title</label><SmartInput value={embedData.title} onChange={(v: any) => handleEmbedChange('title', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] font-bold" /></div>
-                            <div><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Description</label><SmartInput isTextarea={true} maxLength={4096} value={embedData.description} onChange={(v: any) => handleEmbedChange('description', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-3 rounded border border-[#1e1f22] min-h-[100px]" /></div>
+                            <div><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Title</label><SmartInput value={embedData.title} onChange={(v: string) => handleEmbedChange('title', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] font-bold" /></div>
+                            <div><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Description</label><SmartInput isTextarea={true} maxLength={4096} value={embedData.description} onChange={(v: string) => handleEmbedChange('description', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-3 rounded border border-[#1e1f22] min-h-[100px]" /></div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Color</label><div className="flex gap-2"><input type="color" value={embedData.color} onChange={(e) => handleEmbedChange('color', e.target.value)} className="h-10 w-12 bg-transparent border-none cursor-pointer" /><input type="text" value={embedData.color} onChange={(e) => handleEmbedChange('color', e.target.value)} className="flex-1 bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] uppercase" /></div></div>
                                 <div><ImageInput label="Thumbnail URL" value={embedData.thumbnail} onChange={(v: string) => handleEmbedChange('thumbnail', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
@@ -387,12 +541,12 @@ export default function JoinSettingsPage() {
                             <div className="border-t border-[#3f4147] pt-4 space-y-4">
                                 <div className="flex gap-4">
                                     <div className="w-1/3"><ImageInput label="Footer Icon" value={embedData.footer_icon} onChange={(v: string) => handleEmbedChange('footer_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
-                                    <div className="flex-1"><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Footer Text</label><SmartInput value={embedData.footer_text} onChange={(v: any) => handleEmbedChange('footer_text', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22]" /></div>
+                                    <div className="flex-1"><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Footer Text</label><SmartInput value={embedData.footer_text} onChange={(v: string) => handleEmbedChange('footer_text', v)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22]" /></div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Timestamp Mode</label>
-                                        <select value={embedData.timestamp_mode} onChange={(e) => handleEmbedChange('timestamp_mode', e.target.value)} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] focus:outline-none focus:border-[#5865f2]">
+                                        <select value={embedData.timestamp_mode} onChange={(e) => handleEmbedChange('timestamp_mode', e.target.value as 'none' | 'current' | 'custom')} className="w-full bg-[#1e1f22] text-[#dbdee1] p-2 rounded border border-[#1e1f22] focus:outline-none focus:border-[#5865f2]">
                                             <option value="none">ปิด (None)</option>
                                             <option value="current">เวลาปัจจุบัน (Current Time)</option>
                                             <option value="custom">กำหนดเอง (Custom Date)</option>
@@ -415,7 +569,7 @@ export default function JoinSettingsPage() {
             </div>
 
             <div className="bg-[#2b2d31] p-6 rounded-xl border border-[#1e1f22] shadow-lg">
-                <div className="flex items-center justify-between mb-6 border-b border-gray-600 pb-4"><h2 className="text-xl font-bold text-white flex items-center gap-2">🖼️ Welcome Image <span className="text-xs font-normal text-gray-400 bg-black/20 px-2 py-1 rounded">รูปภาพต้อนรับ</span></h2><label className="relative inline-flex items-center cursor-pointer"><span className="mr-3 text-sm font-medium text-gray-300">{useImage ? 'ON' : 'OFF'}</span><input type="checkbox" className="sr-only peer" checked={useImage} onChange={(e) => setUseImage(e.target.checked)} /><div className="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#5865f2] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div>
+                <div className="flex items-center justify-between mb-6 border-b border-gray-600 pb-4"><h2 className="text-xl font-bold text-white flex items-center gap-2">🖼️ Welcome Image <span className="text-xs font-normal text-gray-400 bg-black/20 px-2 py-1 rounded">รูปภาพต้อนรับ</span></h2><label className="relative inline-flex items-center cursor-pointer"><span className="mr-3 text-sm font-medium text-gray-300">{useImage ? 'ON' : 'OFF'}</span><input type="checkbox" className="sr-only peer" checked={useImage} onChange={(e) => setUseImage(e.target.checked)} /><div className="relative w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#5865f2] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div>
                 {useImage && (
                     <div className="flex flex-col xl:flex-row gap-8 animate-in fade-in slide-in-from-top-2">
                         <div className="flex-1 space-y-5 order-2 xl:order-1">
@@ -423,18 +577,27 @@ export default function JoinSettingsPage() {
                             <ImageInput label="URL พื้นหลัง (Background Image)" value={imageData.bg_url} onChange={(v: string) => handleImageChange('bg_url', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} />
                             <div className="space-y-4 bg-[#1e1f22] p-4 rounded border border-[#3f4147]">
                                 <h3 className="text-white text-sm font-bold border-b border-gray-600 pb-2 mb-2">🔤 ตั้งค่าข้อความ 3 บรรทัด</h3>
-                                <div className="flex gap-4 items-end"><div className="flex-1"><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">บรรทัดที่ 1 (Title)</label><SmartInput value={imageData.image_title} onChange={(v: any) => handleImageChange('image_title', v)} className="w-full bg-[#2b2d31] text-[#dbdee1] p-2 rounded border border-[#3f4147]" /></div><div><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">สี (Color)</label><div className="flex items-center gap-2 bg-[#2b2d31] p-1 rounded border border-[#3f4147] h-[38px]"><input type="color" value={imageData.title_color} onChange={(e) => handleImageChange('title_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer p-0" /></div></div></div>
-                                <div className="flex gap-4 items-end"><div className="flex-1"><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">บรรทัดที่ 2 (Username)</label><SmartInput value={imageData.image_username} onChange={(v: any) => handleImageChange('image_username', v)} className="w-full bg-[#2b2d31] text-[#dbdee1] p-2 rounded border border-[#3f4147]" /></div><div><div className="flex items-center gap-2 bg-[#2b2d31] p-1 rounded border border-[#3f4147] h-[38px]"><input type="color" value={imageData.username_color} onChange={(e) => handleImageChange('username_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer p-0" /></div></div></div>
-                                <div className="flex gap-4 items-end"><div className="flex-1"><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">บรรทัดที่ 3 (Sub-Text)</label><SmartInput value={imageData.text_content} onChange={(v: any) => handleImageChange('text_content', v)} className="w-full bg-[#2b2d31] text-[#dbdee1] p-2 rounded border border-[#3f4147]" /></div><div><div className="flex items-center gap-2 bg-[#2b2d31] p-1 rounded border border-[#3f4147] h-[38px]"><input type="color" value={imageData.message_color} onChange={(e) => handleImageChange('message_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer p-0" /></div></div></div>
+                                <div className="flex gap-4 items-end"><div className="flex-1"><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">บรรทัดที่ 1 (Title)</label><SmartInput value={imageData.image_title} onChange={(v: string) => handleImageChange('image_title', v)} className="w-full bg-[#2b2d31] text-[#dbdee1] p-2 rounded border border-[#3f4147]" /></div><div><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">สี (Color)</label><div className="flex items-center gap-2 bg-[#2b2d31] p-1 rounded border border-[#3f4147] h-[38px]"><input type="color" value={imageData.title_color} onChange={(e) => handleImageChange('title_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer p-0" /></div></div></div>
+                                <div className="flex gap-4 items-end"><div className="flex-1"><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">บรรทัดที่ 2 (Username)</label><SmartInput value={imageData.image_username} onChange={(v: string) => handleImageChange('image_username', v)} className="w-full bg-[#2b2d31] text-[#dbdee1] p-2 rounded border border-[#3f4147]" /></div><div><div className="flex items-center gap-2 bg-[#2b2d31] p-1 rounded border border-[#3f4147] h-[38px]"><input type="color" value={imageData.username_color} onChange={(e) => handleImageChange('username_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer p-0" /></div></div></div>
+                                <div className="flex gap-4 items-end"><div className="flex-1"><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">บรรทัดที่ 3 (Sub-Text)</label><SmartInput value={imageData.text_content} onChange={(v: string) => handleImageChange('text_content', v)} className="w-full bg-[#2b2d31] text-[#dbdee1] p-2 rounded border border-[#3f4147]" /></div><div><div className="flex items-center gap-2 bg-[#2b2d31] p-1 rounded border border-[#3f4147] h-[38px]"><input type="color" value={imageData.message_color} onChange={(e) => handleImageChange('message_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer p-0" /></div></div></div>
                             </div>
                             <div className="grid grid-cols-2 gap-4"><div><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Avatar Shape</label><div className="flex bg-[#1e1f22] rounded p-1"><button type="button" onClick={() => handleImageChange('avatar_shape', 'circle')} className={`flex-1 py-1 text-xs rounded transition ${imageData.avatar_shape === 'circle' ? 'bg-[#5865f2] text-white' : 'text-gray-400'}`}>Circle</button><button type="button" onClick={() => handleImageChange('avatar_shape', 'square')} className={`flex-1 py-1 text-xs rounded transition ${imageData.avatar_shape === 'square' ? 'bg-[#5865f2] text-white' : 'text-gray-400'}`}>Square</button></div></div><div><label className="block text-[#b5bac1] text-xs font-bold uppercase mb-2">Overlay Opacity: {imageData.overlay_opacity}%</label><input type="range" min="0" max="100" value={imageData.overlay_opacity} onChange={(e) => handleImageChange('overlay_opacity', Number(e.target.value))} className="w-full h-2 bg-[#1e1f22] rounded-lg appearance-none cursor-pointer accent-[#5865f2] mt-2" /></div></div>
-                            <div className="grid grid-cols-3 gap-2"><div><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">Position</label><select value={imageData.image_position} onChange={(e) => handleImageChange('image_position', e.target.value)} className="w-full bg-[#1e1f22] text-white p-2 rounded border border-[#3f4147] text-xs"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="text">Text Only (No Avatar)</option></select></div><div><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">Circle Color</label><div className="flex items-center gap-2 bg-[#1e1f22] p-2 rounded border border-[#3f4147]"><input type="color" value={imageData.circle_color} onChange={(e) => handleImageChange('circle_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer" /></div></div><div><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">Overlay Color</label><div className="flex items-center gap-2 bg-[#1e1f22] p-2 rounded border border-[#3f4147]"><input type="color" value={imageData.overlay_color} onChange={(e) => handleImageChange('overlay_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer" /></div></div></div>
+                            <div className="grid grid-cols-3 gap-2"><div><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">Position</label><select value={imageData.image_position} onChange={(e) => handleImageChange('image_position', e.target.value as 'left' | 'center' | 'right' | 'text')} className="w-full bg-[#1e1f22] text-white p-2 rounded border border-[#3f4147] text-xs"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="text">Text Only (No Avatar)</option></select></div><div><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">Circle Color</label><div className="flex items-center gap-2 bg-[#1e1f22] p-2 rounded border border-[#3f4147]"><input type="color" value={imageData.circle_color} onChange={(e) => handleImageChange('circle_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer" /></div></div><div><label className="block text-[#b5bac1] text-[10px] font-bold uppercase mb-1">Overlay Color</label><div className="flex items-center gap-2 bg-[#1e1f22] p-2 rounded border border-[#3f4147]"><input type="color" value={imageData.overlay_color} onChange={(e) => handleImageChange('overlay_color', e.target.value)} className="h-6 w-6 bg-transparent border-none cursor-pointer" /></div></div></div>
                         </div>
                         <div className="flex-1 xl:max-w-[500px] order-1 xl:order-2"><div className="sticky top-6"><h3 className="text-[#949ba4] text-xs font-bold uppercase mb-2 text-right">Image Preview</h3><ImagePreview /><p className="text-[#949ba4] text-[10px] mt-2 text-right">*รูปภาพที่ได้จริงอาจแตกต่างเล็กน้อยขึ้นอยู่กับการประมวลผลของบอท</p></div></div>
                     </div>
                 )}
             </div>
-            <button type="submit" onClick={handleSave} className="fixed bottom-6 right-6 bg-[#23a559] hover:bg-[#1f934e] text-white font-bold py-3 px-8 rounded-full shadow-2xl transition-transform hover:scale-105 z-50 flex items-center gap-2"><span>💾 Save Changes</span></button>
+            {isDirty && (
+                <div className="fixed bottom-6 right-6 z-50 flex items-center gap-4">
+                    <button type="button" onClick={handleReset} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-full shadow-2xl transition-all hover:scale-105">
+                        <span>Reset</span>
+                    </button>
+                    <button type="submit" onClick={handleSave} className="bg-[#23a559] hover:bg-[#1f934e] text-white font-bold py-3 px-6 rounded-full shadow-2xl transition-all hover:scale-105 flex items-center gap-2">
+                        <span>💾 Save Changes</span>
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
