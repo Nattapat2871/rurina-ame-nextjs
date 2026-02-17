@@ -30,30 +30,32 @@ export default function Dashboard() {
 
   return (
     <div className="flex bg-[#313338] min-h-screen font-sans overflow-hidden">
-      {/* Sidebar ซ้ายสุด */}
       <Sidebar />
       
-      {/* พื้นที่เนื้อหาขวามือ */}
       <div className="flex-1 flex flex-col h-screen relative bg-[#313338]">
         
-        {/* Header แถบบน */}
+        {/* Header */}
         <div className="h-16 border-b border-[#1e1f22] flex justify-between items-center px-8 shrink-0 bg-[#313338] z-20">
-           <div className="text-white font-bold text-lg opacity-0 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+           {/* เพิ่มอนิเมชั่น Fade In */}
+           <div className="text-white font-bold text-lg opacity-0 animate-fade-in" style={{ animationDelay: '0.1s' }}>
               Welcome back! 👋
            </div>
            <ProfileMenu />
         </div>
 
-        {/* เนื้อหาหลัก */}
+        {/* Content */}
         <div className="flex-1 p-8 md:p-10 overflow-y-auto custom-scrollbar z-10">
-          <div className="max-w-7xl mx-auto animate-slide-down">
-            <h1 className="text-3xl font-extrabold text-white mb-2 tracking-tight">เลือกเซิร์ฟเวอร์ (Select Server)</h1>
-            <p className="text-[#949ba4] mb-8 text-lg">จัดการบอทและตั้งค่าต่างๆ สำหรับชุมชนของคุณ</p>
+          <div className="max-w-7xl mx-auto">
+            {/* เพิ่มอนิเมชั่น Slide Down */}
+            <div className="opacity-0 animate-slide-down" style={{ animationDelay: '0.2s' }}>
+                <h1 className="text-3xl font-extrabold text-white mb-2 tracking-tight">เลือกเซิร์ฟเวอร์ (Select Server)</h1>
+                <p className="text-[#949ba4] mb-8 text-lg">จัดการบอทและตั้งค่าต่างๆ สำหรับชุมชนของคุณ</p>
+            </div>
 
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-pulse-soft">
                     {[...Array(4)].map((_, i) => (
-                        <div key={i} className="h-48 bg-[#2b2d31] rounded-xl animate-pulse border border-[#1e1f22]"></div>
+                        <div key={i} className="h-48 bg-[#2b2d31] rounded-xl border border-[#1e1f22]"></div>
                     ))}
                 </div>
             ) : (
@@ -61,16 +63,16 @@ export default function Dashboard() {
                 {guilds.map((g, index) => (
                   <Link key={g.id} href={`/dashboard/${g.id}/announcements`} 
                       className={`
-                          relative bg-[#2b2d31] p-6 rounded-2xl border transition-all duration-300 cursor-pointer group shadow-lg flex flex-col items-center
+                          relative bg-[#2b2d31] p-6 rounded-2xl border transition-all duration-300 cursor-pointer group shadow-lg flex flex-col items-center opacity-0 animate-scale-in
                           ${g.bot_in_guild 
                               ? 'border-[#1e1f22] hover:border-[#5865f2] hover:bg-[#35373c] hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#5865f2]/10' 
                               : 'border-[#1e1f22] opacity-60 hover:opacity-90 hover:border-[#f0b232] grayscale hover:grayscale-0'
                           }
                       `}
-                      style={{ animationDelay: `${index * 50}ms` }}
+                      // ใส่ Delay ให้การ์ดเด้งขึ้นมาทีละใบ
+                      style={{ animationDelay: `${index * 50 + 300}ms` }}
                   >
                     
-                    {/* Status Badge */}
                     <div className={`absolute top-4 right-4 w-3 h-3 rounded-full transition-all duration-300 ${g.bot_in_guild ? 'bg-[#23a559] shadow-[0_0_10px_#23a559]' : 'bg-[#80848e]'}`} 
                          title={g.bot_in_guild ? "Online" : "Offline"}>
                     </div>
