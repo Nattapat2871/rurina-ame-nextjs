@@ -16,7 +16,7 @@ export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
 
   const triggerShake = () => {
     setShouldShake(true);
-    // สั่น 500ms แล้วหยุด
+    // สั่น 500ms แล้วหยุด (ตรงกับ duration ของ animation ใน globals.css)
     setTimeout(() => setShouldShake(false), 500);
   };
 
@@ -30,7 +30,6 @@ export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
 export const useUnsavedChanges = () => {
   const context = useContext(UnsavedChangesContext);
   if (!context) {
-    // กรณีใช้ hook นอก provider (เช่น หน้า login) ให้ return ค่า default หลอกๆ ไปเพื่อไม่ให้ error
     return { isDirty: false, setIsDirty: () => {}, shouldShake: false, triggerShake: () => {} };
   }
   return context;

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, ChangeEvent, MouseEvent, FormEvent, memo }
 import { useParams } from 'next/navigation';
 import Swal from 'sweetalert2';
 import { Save, RotateCcw, Image as ImageIcon, Layout, Type, Layers, Palette, Info, BookOpen, Link as LinkIcon, Clock, Plus, Trash2, Columns } from 'lucide-react';
+import { useUnsavedChanges } from '@/components/providers/UnsavedChangesContext';
 
 // --- Interfaces & Constants ---
 interface UserProfile { username: string; global_name: string; id: string; avatar: string; }
@@ -176,6 +177,7 @@ const ImagePreview = ({ imageData, botInfo, userProfile, guildProfile, guildId, 
 
 export default function JoinSettingsPage() {
     const params = useParams(); const guildId = params.id as string; const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const { setIsDirty: setGlobalDirty, shouldShake } = useUnsavedChanges();
     const [channels, setChannels] = useState<Channel[]>([]); const [userProfile, setUserProfile] = useState<UserProfile | null>(null); 
     const [guildProfile, setGuildProfile] = useState<GuildProfile | null>(null); const [availableFonts, setAvailableFonts] = useState<string[]>(["Default"]);
     const [selectedChannel, setSelectedChannel] = useState(""); const [message, setMessage] = useState(""); const [isEnabled, setIsEnabled] = useState(false);
@@ -211,6 +213,15 @@ export default function JoinSettingsPage() {
     }, [guildId, API_URL]);
 
     useEffect(() => { if (!initialSettings) return; const current = { isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData }; setIsDirty(JSON.stringify(current) !== JSON.stringify(initialSettings)); }, [isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData, initialSettings]);
+    
+    // ✅ Sync Local isDirty กับ Global Context
+    useEffect(() => {
+        setGlobalDirty(isDirty);
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => { setGlobalDirty(false); window.removeEventListener('beforeunload', handleBeforeUnload); };
+    }, [isDirty, setGlobalDirty]);
+
     const handleEmbedChange = (key: keyof EmbedData, value: any) => setEmbedData(prev => ({ ...prev, [key]: value }));
     const handleImageChange = (key: keyof ImageData, value: string | number) => setImageData(prev => ({ ...prev, [key]: value }));
     const handleAddField = () => { if ((embedData.fields?.length || 0) >= 25) { Swal.fire({ title: 'จำกัดจำนวน', text: 'เพิ่มฟิลด์ได้สูงสุด 25 ช่อง', icon: 'warning', background: '#0f172a', color: '#f1f5f9' }); return; } setEmbedData(prev => ({ ...prev, fields: [...(prev.fields || []), { id: Date.now().toString(), name: "New Field", value: "Value", inline: false }] })); };
@@ -315,13 +326,12 @@ export default function JoinSettingsPage() {
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-border"><div className="flex-1 w-full"><ImageInput label="Footer Icon" value={embedData.footer_icon} onChange={(v) => handleEmbedChange('footer_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div><div className="flex-1 w-full"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Footer Text</label><SmartInput value={embedData.footer_text} onChange={(v) => handleEmbedChange('footer_text', v)} maxLength={100} /></div></div>
                                     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end bg-secondary/10 p-3 md:p-4 rounded-xl border border-border"><div className="w-full sm:w-1/3 shrink-0"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide flex items-center gap-1"><Clock className="w-3 h-3 text-primary" /> Timestamp</label>
-                                        {/* 🔥 แก้ไข Dropdown Timestamp */}
-                                        <select value={embedData.timestamp_mode} onChange={(e) => handleEmbedChange('timestamp_mode', e.target.value as any)} className="w-full bg-secondary/30 text-foreground p-2 md:p-2.5 rounded-lg border border-border focus:border-primary text-sm focus:ring-2 focus:ring-primary/20 transition-all duration-300 cursor-pointer custom-scrollbar">
-                                            <option value="none" className="bg-[#1e293b] text-white">ปิด (Off)</option>
-                                            <option value="current" className="bg-[#1e293b] text-white">เวลาปัจจุบัน</option>
-                                            <option value="custom" className="bg-[#1e293b] text-white">กำหนดเอง</option>
-                                        </select>
-                                    </div>{embedData.timestamp_mode === 'custom' && (<div className="flex-1 w-full animate-in fade-in slide-in-from-left-4 duration-300 mt-2 sm:mt-0"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">เลือกวันและเวลา</label><input type="datetime-local" value={embedData.custom_timestamp} onChange={(e) => handleEmbedChange('custom_timestamp', e.target.value)} className="w-full bg-secondary/30 text-foreground p-2 md:p-2.5 rounded-lg border border-border focus:border-primary text-sm focus:ring-2 focus:ring-primary/20 transition-all duration-300" /></div>)}</div>
+                                    {/* 🔥 แก้ไข Dropdown Timestamp */}
+                                    <select value={embedData.timestamp_mode} onChange={(e) => handleEmbedChange('timestamp_mode', e.target.value as any)} className="w-full bg-secondary/30 text-foreground p-2 md:p-2.5 rounded-lg border border-border focus:border-primary text-sm focus:ring-2 focus:ring-primary/20 transition-all duration-300 cursor-pointer custom-scrollbar">
+                                        <option value="none" className="bg-[#1e293b] text-white">ปิด (Off)</option>
+                                        <option value="current" className="bg-[#1e293b] text-white">เวลาปัจจุบัน</option>
+                                        <option value="custom" className="bg-[#1e293b] text-white">กำหนดเอง</option>
+                                    </select></div>{embedData.timestamp_mode === 'custom' && (<div className="flex-1 w-full animate-in fade-in slide-in-from-left-4 duration-300 mt-2 sm:mt-0"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">เลือกวันและเวลา</label><input type="datetime-local" value={embedData.custom_timestamp} onChange={(e) => handleEmbedChange('custom_timestamp', e.target.value)} className="w-full bg-secondary/30 text-foreground p-2 md:p-2.5 rounded-lg border border-border focus:border-primary text-sm focus:ring-2 focus:ring-primary/20 transition-all duration-300" /></div>)}</div>
                                 </div>
                             </div>
                             <div className="relative w-full h-full mt-4 xl:mt-0"><div className="sticky top-4 md:top-6 z-10"><div className="flex items-center justify-between mb-2 w-full lg:max-w-2xl"><h3 className="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wide flex items-center gap-1 md:gap-2"><Layers className="w-4 h-4"/> Embed Preview</h3><span className="text-[9px] md:text-[10px] text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full animate-pulse">● Live Update</span></div><div className="w-full lg:max-w-2xl animate-in fade-in zoom-in-95 duration-500"><EmbedPreview /></div></div></div>
@@ -381,7 +391,7 @@ export default function JoinSettingsPage() {
 
             {/* Sticky Action Bar */}
             <div className={`fixed bottom-0 left-0 right-0 p-4 md:p-6 lg:ml-64 flex justify-center items-center transition-all duration-500 transform pointer-events-none ${isDirty ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'} z-[70]`}>
-                <div className="pointer-events-auto bg-[#111214]/95 backdrop-blur-md border border-border p-3 md:p-4 rounded-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col sm:flex-row items-center gap-4 sm:gap-6 max-w-2xl w-full justify-between animate-in slide-in-from-bottom-10 fade-in duration-500">
+                <div className={`pointer-events-auto bg-[#111214]/95 backdrop-blur-md border border-border p-3 md:p-4 rounded-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col sm:flex-row items-center gap-4 sm:gap-6 max-w-2xl w-full justify-between animate-in slide-in-from-bottom-10 fade-in duration-500 ${shouldShake ? 'animate-shake-error' : ''}`}>
                     <span className="text-white font-medium flex items-center gap-2 pl-2 text-sm md:text-base"><span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>คุณมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก</span>
                     <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
                         <button type="button" onClick={handleReset} className="flex-1 sm:flex-none flex justify-center items-center gap-2 text-secondary hover:text-foreground px-3 md:px-4 py-2 rounded-xl hover:bg-secondary/20 transition-all duration-300 hover:scale-105 active:scale-95 font-medium text-xs md:text-sm bg-secondary/10 sm:bg-transparent"><RotateCcw className="w-3 h-3 md:w-4 md:h-4" /> Reset</button>
