@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, ChangeEvent, MouseEvent, FormEvent, memo } from 'react';
 import { useParams } from 'next/navigation';
 import Swal from 'sweetalert2';
-import { Save, RotateCcw, Image as ImageIcon, Layout, Type, Layers, Palette, Info, BookOpen, Link as LinkIcon, Clock, Plus, Trash2, Columns } from 'lucide-react';
+import { Save, RotateCcw, Image as ImageIcon, Layout, Type, Layers, Palette, Info, BookOpen, Link as LinkIcon, Clock, Plus, Trash2, Columns, Zap } from 'lucide-react';
 import { useUnsavedChanges } from '@/components/providers/UnsavedChangesContext';
 
 // --- Interfaces & Constants ---
@@ -16,7 +16,7 @@ interface EmbedData { author_name: string; author_icon: string; title: string; d
 interface ImageData { bg_url: string; image_title: string; image_username: string; text_content: string; font_name: string; avatar_shape: 'circle' | 'square'; overlay_opacity: number; image_position: 'left' | 'center' | 'right' | 'text'; title_color: string; username_color: string; message_color: string; circle_color: string; overlay_color: string; }
 interface SmartInputProps { value: string; onChange: (value: string) => void; placeholder?: string; className?: string; wrapperClassName?: string; isTextarea?: boolean; maxLength?: number; showCounter?: boolean; }
 interface ImageInputProps { label: string; value: string; onChange: (value: string) => void; botAvatar: string; userReal: UserProfile | null; guildReal: GuildProfile | null; }
-interface LeaveSettings { isEnabled: boolean; selectedChannel: string; message: string; useEmbed: boolean; embedData: EmbedData; useImage: boolean; imageData: ImageData; }
+interface BoostSettings { isEnabled: boolean; selectedChannel: string; message: string; useEmbed: boolean; embedData: EmbedData; useImage: boolean; imageData: ImageData; }
 interface ImagePreviewProps { imageData: ImageData; botInfo: BotInfo; userProfile: UserProfile | null; guildProfile: GuildProfile | null; guildId: string | string[]; API_URL: string; }
 
 const AVAILABLE_VARS = [
@@ -152,7 +152,7 @@ const ImagePreview = ({ imageData, botInfo, userProfile, guildProfile, guildId, 
             const pText = previewReplacer(imageData.text_content, botInfo.avatar, userProfile, guildProfile, true);
             const userAvatarUrl = userProfile?.avatar ? `https://cdn.discordapp.com/avatars/${userProfile.id}/${userProfile.avatar}.${userProfile?.avatar?.startsWith("a_") ? "gif" : "png"}?size=256` : botInfo.avatar;
             try {
-                const res = await fetch(`${API_URL}/api/announcements/${guildId}/preview_leave_image`, {
+                const res = await fetch(`${API_URL}/api/announcements/${guildId}/preview_boost_image`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         bg_url: imageData.bg_url, image_title: pTitle, image_username: pUsername, text_content: pText, font_name: imageData.font_name,
@@ -175,7 +175,7 @@ const ImagePreview = ({ imageData, botInfo, userProfile, guildProfile, guildId, 
     );
 };
 
-export default function LeaveSettingsPage() {
+export default function BoostSettingsPage() {
     const params = useParams(); const guildId = params.id as string; const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
     const { setIsDirty: setGlobalDirty, shouldShake } = useUnsavedChanges();
     const [channels, setChannels] = useState<Channel[]>([]); const [userProfile, setUserProfile] = useState<UserProfile | null>(null); 
@@ -192,21 +192,25 @@ export default function LeaveSettingsPage() {
     }, []);
 
     const [useEmbed, setUseEmbed] = useState(false);
-    const [embedData, setEmbedData] = useState<EmbedData>({ author_name: "", author_icon: "", title: "", description: "", url: "", color: "#38bdf8", thumbnail: "", image: "", footer_text: "", footer_icon: "", timestamp_mode: "none", custom_timestamp: "", fields: [] });
+    const [embedData, setEmbedData] = useState<EmbedData>({ author_name: "", author_icon: "", title: "", description: "", url: "", color: "#FF73FA", thumbnail: "", image: "", footer_text: "", footer_icon: "", timestamp_mode: "none", custom_timestamp: "", fields: [] });
     const [useImage, setUseImage] = useState(false);
-    const [imageData, setImageData] = useState<ImageData>({ bg_url: "https://i.pinimg.com/1200x/db/11/74/db1174ef4af95531ab9f5b274af52373.jpg", image_title: "GOODBYE", image_username: "{user.username}", text_content: "Goodbye from {server.name}!", font_name: "discord", avatar_shape: "circle", overlay_opacity: 50, image_position: "center", title_color: "#80c8ff", username_color: "#478f2d", message_color: "#f4ff5c", circle_color: "#545c24", overlay_color: "#000000" });
+    const [imageData, setImageData] = useState<ImageData>({ bg_url: "https://i.pinimg.com/1200x/db/11/74/db1174ef4af95531ab9f5b274af52373.jpg", image_title: "THANK YOU", image_username: "{user.username}", text_content: "for boost server!", font_name: "discord", avatar_shape: "circle", overlay_opacity: 50, image_position: "center", title_color: "#FF73FA", username_color: "#FFFFFF", message_color: "#FF73FA", circle_color: "#FFFFFF", overlay_color: "#000000" });
 
-    const [initialSettings, setInitialSettings] = useState<LeaveSettings | null>(null); const [isDirty, setIsDirty] = useState(false);
+    const [initialSettings, setInitialSettings] = useState<BoostSettings | null>(null); const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
             const [me, bot, list, fonts, status] = await Promise.all([
-                fetch(`${API_URL}/api/auth/me`, { credentials: 'include' }).then(r=>r.json()), fetch(`${API_URL}/api/guilds/${guildId}/check_bot`, { credentials: 'include' }).then(r=>r.json()), fetch(`${API_URL}/api/guilds/list`, { credentials: 'include' }).then(r=>r.json()), fetch(`${API_URL}/api/announce/list_fonts`, { credentials: 'include' }).then(r=>r.json()), fetch(`${API_URL}/api/announcements/${guildId}/leave_status`, { credentials: 'include' }).then(r=>r.json())
+                fetch(`${API_URL}/api/auth/me`, { credentials: 'include' }).then(r=>r.json()), 
+                fetch(`${API_URL}/api/guilds/${guildId}/check_bot`, { credentials: 'include' }).then(r=>r.json()), 
+                fetch(`${API_URL}/api/guilds/list`, { credentials: 'include' }).then(r=>r.json()), 
+                fetch(`${API_URL}/api/announce/list_fonts`, { credentials: 'include' }).then(r=>r.json()), 
+                fetch(`${API_URL}/api/announcements/${guildId}/boost_status`, { credentials: 'include' }).then(r=>r.json())
             ]);
             if(!me.error) setUserProfile(me); setChannels(bot.channels || []);
             if(Array.isArray(list)) { const g = list.find((g: any) => g.id === guildId); if(g) setGuildProfile(g); }
             if(fonts.fonts) setAvailableFonts(fonts.fonts);
-            const fetched: LeaveSettings = { isEnabled: status.is_welcome_enabled || false, selectedChannel: status.welcome_channel_id || "", message: status.welcome_message || "", useEmbed: status.use_embed || false, embedData: { ...embedData, ...(status.embed_data || {}) }, useImage: status.use_image || false, imageData: { ...imageData, ...(status.image_data || {}) } };
+            const fetched: BoostSettings = { isEnabled: status.is_welcome_enabled || false, selectedChannel: status.welcome_channel_id || "", message: status.welcome_message || "", useEmbed: status.use_embed || false, embedData: { ...embedData, ...(status.embed_data || {}) }, useImage: status.use_image || false, imageData: { ...imageData, ...(status.image_data || {}) } };
             if(status.bot_name || status.bot_avatar) setBotInfo({ name: status.bot_name || "Bot", avatar: status.bot_avatar });
             setIsEnabled(fetched.isEnabled); setSelectedChannel(fetched.selectedChannel); setMessage(fetched.message); setUseEmbed(fetched.useEmbed); setEmbedData(fetched.embedData); setUseImage(fetched.useImage); setImageData(fetched.imageData); setInitialSettings(fetched);
         }; fetchData();
@@ -214,6 +218,7 @@ export default function LeaveSettingsPage() {
 
     useEffect(() => { if (!initialSettings) return; const current = { isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData }; setIsDirty(JSON.stringify(current) !== JSON.stringify(initialSettings)); }, [isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData, initialSettings]);
     
+    // ✅ Sync Context
     useEffect(() => {
         setGlobalDirty(isDirty);
         const handleBeforeUnload = (e: BeforeUnloadEvent) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
@@ -226,9 +231,9 @@ export default function LeaveSettingsPage() {
     const handleAddField = () => { if ((embedData.fields?.length || 0) >= 25) { Swal.fire({ title: 'จำกัดจำนวน', text: 'เพิ่มฟิลด์ได้สูงสุด 25 ช่อง', icon: 'warning', background: '#0f172a', color: '#f1f5f9' }); return; } setEmbedData(prev => ({ ...prev, fields: [...(prev.fields || []), { id: Date.now().toString(), name: "New Field", value: "Value", inline: false }] })); };
     const handleUpdateField = (id: string, key: keyof EmbedField, val: any) => { setEmbedData(prev => ({ ...prev, fields: prev.fields?.map(f => f.id === id ? { ...f, [key]: val } : f) })); };
     const handleRemoveField = (id: string) => { setEmbedData(prev => ({ ...prev, fields: prev.fields?.filter(f => f.id !== id) })); };
-    const handleSave = async (e: FormEvent) => { e.preventDefault(); const res = await fetch(`${API_URL}/api/announcements/${guildId}/save_leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: selectedChannel, message, use_embed: useEmbed, embed_data: embedData, use_image: useImage, image_data: imageData }), credentials: 'include' }); if (res.ok) { Swal.fire({ title: 'บันทึกสำเร็จ!', icon: 'success', background: '#0f172a', color: '#f1f5f9', timer: 1500 }); setInitialSettings({ isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData }); setIsDirty(false); } };
+    const handleSave = async (e: FormEvent) => { e.preventDefault(); const res = await fetch(`${API_URL}/api/announcements/${guildId}/save_boost`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: selectedChannel, message, use_embed: useEmbed, embed_data: embedData, use_image: useImage, image_data: imageData }), credentials: 'include' }); if (res.ok) { Swal.fire({ title: 'บันทึกสำเร็จ!', icon: 'success', background: '#0f172a', color: '#f1f5f9', timer: 1500 }); setInitialSettings({ isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData }); setIsDirty(false); } };
     const handleReset = () => { if (initialSettings) { setIsEnabled(initialSettings.isEnabled); setSelectedChannel(initialSettings.selectedChannel); setMessage(initialSettings.message); setUseEmbed(initialSettings.useEmbed); setEmbedData(initialSettings.embedData); setUseImage(initialSettings.useImage); setImageData(initialSettings.imageData); } };
-    const toggleSwitch = async (checked: boolean) => { setIsEnabled(checked); await fetch(`${API_URL}/api/announcements/${guildId}/toggle_leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: checked }), credentials: 'include' }); };
+    const toggleSwitch = async (checked: boolean) => { setIsEnabled(checked); await fetch(`${API_URL}/api/announcements/${guildId}/toggle_boost`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: checked }), credentials: 'include' }); };
 
     const EmbedPreview = () => {
         const pTitle = previewReplacer(embedData.title, botInfo.avatar, userProfile, guildProfile, true); const pDesc = previewReplacer(embedData.description, botInfo.avatar, userProfile, guildProfile, false); const pAuthorName = previewReplacer(embedData.author_name, botInfo.avatar, userProfile, guildProfile, true); const pAuthorIcon = previewReplacer(embedData.author_icon, botInfo.avatar, userProfile, guildProfile, false); const pFooterText = previewReplacer(embedData.footer_text, botInfo.avatar, userProfile, guildProfile, true); const pFooterIcon = previewReplacer(embedData.footer_icon, botInfo.avatar, userProfile, guildProfile, false); const pThumbnail = previewReplacer(embedData.thumbnail, botInfo.avatar, userProfile, guildProfile, false); const pImage = previewReplacer(embedData.image, botInfo.avatar, userProfile, guildProfile, false); const pMessage = previewReplacer(message, botInfo.avatar, userProfile, guildProfile, false);
@@ -262,8 +267,8 @@ export default function LeaveSettingsPage() {
     return (
         <div className="flex flex-col pb-32 p-4 md:p-8 min-h-screen max-w-[1920px] mx-auto bg-background/50 font-sans">
             <div className="flex justify-between items-center mb-6 md:mb-10 animate-fade-in-up">
-                <div><h1 className="text-2xl md:text-4xl font-extrabold text-foreground tracking-tight drop-shadow-md">Leave Message</h1><p className="text-secondary mt-1 md:mt-2 text-sm md:text-lg">จัดการระบบแจ้งเตือนคนออกจากเซิร์ฟเวอร์</p></div>
-                <label className="relative inline-flex items-center cursor-pointer scale-[1.1] md:scale-125 mr-2 md:mr-4 group"><input type="checkbox" className="sr-only peer" checked={isEnabled} onChange={(e) => toggleSwitch(e.target.checked)} /><div className="relative w-12 h-6 md:w-14 md:h-7 bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 md:after:h-6 md:after:w-6 after:transition-all peer-checked:bg-primary peer-checked:shadow-[0_0_10px_rgba(56,189,248,0.5)] group-hover:scale-105 transition-transform duration-300"></div></label>
+                <div><h1 className="text-2xl md:text-4xl font-extrabold text-foreground tracking-tight drop-shadow-md text-[#FF73FA]">Boost Message</h1><p className="text-secondary mt-1 md:mt-2 text-sm md:text-lg">จัดการระบบแจ้งเตือนการ Boost Server</p></div>
+                <label className="relative inline-flex items-center cursor-pointer scale-[1.1] md:scale-125 mr-2 md:mr-4 group"><input type="checkbox" className="sr-only peer" checked={isEnabled} onChange={(e) => toggleSwitch(e.target.checked)} /><div className="relative w-12 h-6 md:w-14 md:h-7 bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 md:after:h-6 md:after:w-6 after:transition-all peer-checked:bg-[#FF73FA] peer-checked:shadow-[0_0_10px_rgba(255,115,250,0.5)] group-hover:scale-105 transition-transform duration-300"></div></label>
             </div>
 
             {/* General Settings */}
@@ -285,7 +290,7 @@ export default function LeaveSettingsPage() {
                             ))}
                         </select>
                     </div>
-                    <div><label className="block text-secondary text-xs font-bold uppercase mb-2 md:mb-4 tracking-wide">ข้อความหลัก (Main Message)</label><SmartInput value={message} onChange={setMessage} placeholder="ข้อความทักทาย..." maxLength={2000} /></div>
+                    <div><label className="block text-secondary text-xs font-bold uppercase mb-2 md:mb-4 tracking-wide">ข้อความหลัก (Main Message)</label><SmartInput value={message} onChange={setMessage} placeholder="ข้อความขอบคุณ..." maxLength={2000} /></div>
                 </div>
             </div>
 
@@ -339,8 +344,8 @@ export default function LeaveSettingsPage() {
             {/* Image Settings */}
             <div className="relative z-[5] bg-card backdrop-blur-md p-5 md:p-8 rounded-3xl border border-border shadow-xl hover:shadow-primary/5 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
                 <div className="flex items-center justify-between border-b border-border/50 pb-4">
-                    <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><Palette className="w-5 h-5 text-primary" /> Leave Image</h2>
-                    <label className="relative inline-flex items-center cursor-pointer group"><span className="mr-2 md:mr-3 text-xs md:text-sm font-medium text-secondary group-hover:text-primary transition-colors">{useImage ? 'ON' : 'OFF'}</span><input type="checkbox" className="sr-only peer" checked={useImage} onChange={(e) => setUseImage(e.target.checked)} /><div className="relative w-10 h-5 md:w-11 md:h-6 bg-slate-700/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary peer-checked:shadow-[0_0_10px_rgba(56,189,248,0.5)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 md:after:h-5 md:after:w-5 after:transition-all group-hover:scale-105 transition-transform duration-300"></div></label>
+                    <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><Palette className="w-5 h-5 text-primary" /> Boost Image</h2>
+                    <label className="relative inline-flex items-center cursor-pointer group"><span className="mr-2 md:mr-3 text-xs md:text-sm font-medium text-secondary group-hover:text-primary transition-colors">{useImage ? 'ON' : 'OFF'}</span><input type="checkbox" className="sr-only peer" checked={useImage} onChange={(e) => setUseImage(e.target.checked)} /><div className="relative w-10 h-5 md:w-11 md:h-6 bg-slate-700/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary peer-checked:shadow-[0_0_10px_rgba(255,115,250,0.5)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 md:after:h-5 md:after:w-5 after:transition-all group-hover:scale-105 transition-transform duration-300"></div></label>
                 </div>
                 <div className={`grid transition-all duration-500 ease-in-out ${useImage ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'}`}>
                     <div className={useImage ? "overflow-visible" : "overflow-hidden"}>

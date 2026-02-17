@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
-import { LogIn, LogOut, Settings } from 'lucide-react';
+import { LogIn, LogOut, Settings, ArrowRight } from 'lucide-react';
 
 export default function AnnouncementsPage() {
   const { id } = useParams();
@@ -47,113 +47,101 @@ export default function AnnouncementsPage() {
     setJoinEnabled(checked);
     try {
       await fetch(`${API_URL}/api/announcements/${id}/toggle_join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: checked }),
-        credentials: 'include',
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: checked }), credentials: 'include',
       });
-    } catch (error) {
-      setJoinEnabled(!checked);
-    }
+    } catch (error) { setJoinEnabled(!checked); }
   };
 
   const toggleLeave = async (checked: boolean) => {
     setLeaveEnabled(checked);
     try {
       await fetch(`${API_URL}/api/announcements/${id}/toggle_leave`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: checked }),
-        credentials: 'include',
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: checked }), credentials: 'include',
       });
-    } catch (error) {
-      setLeaveEnabled(!checked);
-    }
+    } catch (error) { setLeaveEnabled(!checked); }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[50vh] text-[#949ba4] animate-pulse-soft">
+      <div className="flex items-center justify-center h-[50vh] text-primary animate-pulse-soft">
         Loading settings...
       </div>
     );
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto opacity-0 animate-slide-down">
+    <div className="p-6 md:p-8 max-w-7xl mx-auto opacity-0 animate-fade-in-up">
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">Announcement Settings</h1>
-        <p className="text-[#949ba4]">จัดการข้อความต้อนรับและคำอำลาสำหรับเซิร์ฟเวอร์ของคุณ</p>
+        <h1 className="text-3xl font-extrabold text-foreground tracking-tight mb-2">Announcement Settings</h1>
+        <p className="text-secondary">จัดการข้อความต้อนรับและคำอำลาสำหรับเซิร์ฟเวอร์ของคุณ</p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* ✅ Welcome Card */}
-        <div className="bg-[#2b2d31] rounded-xl border border-[#1e1f22] overflow-hidden hover:border-[#5865f2] transition-colors duration-300 shadow-lg group opacity-0 animate-scale-in" style={{ animationDelay: '0.1s' }}>
-          <div className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-[#23a559]/10 rounded-lg group-hover:bg-[#23a559]/20 transition-colors">
-                    <LogIn className="w-6 h-6 text-[#23a559]" />
+        <div className="bg-card backdrop-blur-md rounded-3xl border border-border overflow-hidden hover:border-primary transition-all duration-300 shadow-lg hover:shadow-primary/20 group opacity-0 animate-scale-in" style={{ animationDelay: '0.1s' }}>
+          <div className="p-6 relative">
+             <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none group-hover:scale-110 transition-transform duration-500">
+                <LogIn className="w-24 h-24 text-primary" />
+             </div>
+             
+            <div className="flex justify-between items-start mb-4 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-xl group-hover:bg-primary/20 transition-colors border border-primary/20">
+                    <LogIn className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">Welcome Message</h2>
-                  <p className="text-[#949ba4] text-xs md:text-sm mt-1">ส่งข้อความเมื่อมีคนเข้าเซิร์ฟเวอร์</p>
+                  <h2 className="text-xl font-bold text-foreground">Welcome Message</h2>
+                  <p className="text-secondary text-xs md:text-sm mt-1">ส่งข้อความเมื่อมีคนเข้าเซิร์ฟเวอร์</p>
                 </div>
               </div>
               
               <label className="relative inline-flex items-center cursor-pointer scale-110">
-                <input 
-                  type="checkbox" 
-                  className="sr-only peer" 
-                  checked={joinEnabled} 
-                  onChange={(e) => toggleJoin(e.target.checked)} 
-                />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#23a559]"></div>
+                <input type="checkbox" className="sr-only peer" checked={joinEnabled} onChange={(e) => toggleJoin(e.target.checked)} />
+                <div className="w-11 h-6 bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:shadow-[0_0_10px_rgba(56,189,248,0.5)]"></div>
               </label>
             </div>
             
-            <div className="mt-6 pt-4 border-t border-[#3f4147] flex justify-end">
+            <div className="mt-6 pt-4 border-t border-border flex justify-end relative z-10">
               <Link 
                 href={`/dashboard/${id}/announcements/join`}
-                className="flex items-center gap-2 px-4 py-2 bg-[#5865f2] hover:bg-[#4752c4] text-white rounded-lg transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
+                className="flex items-center gap-2 px-5 py-2.5 bg-secondary/30 hover:bg-primary text-foreground hover:text-white border border-border hover:border-primary rounded-xl transition-all duration-300 text-sm font-medium shadow-sm hover:shadow-lg hover:-translate-y-0.5 active:scale-95 group/btn"
               >
-                <Settings className="w-4 h-4" /> ตั้งค่า (Config)
+                <Settings className="w-4 h-4 group-hover/btn:rotate-90 transition-transform" /> ตั้งค่า (Config)
               </Link>
             </div>
           </div>
         </div>
 
         {/* ✅ Leave Card */}
-        <div className="bg-[#2b2d31] rounded-xl border border-[#1e1f22] overflow-hidden hover:border-[#fa5252] transition-colors duration-300 shadow-lg group opacity-0 animate-scale-in" style={{ animationDelay: '0.2s' }}>
-           <div className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-[#fa5252]/10 rounded-lg group-hover:bg-[#fa5252]/20 transition-colors">
-                    <LogOut className="w-6 h-6 text-[#fa5252]" />
+        <div className="bg-card backdrop-blur-md rounded-3xl border border-border overflow-hidden hover:border-red-500 transition-all duration-300 shadow-lg hover:shadow-red-500/20 group opacity-0 animate-scale-in" style={{ animationDelay: '0.2s' }}>
+           <div className="p-6 relative">
+            <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none group-hover:scale-110 transition-transform duration-500">
+                <LogOut className="w-24 h-24 text-red-500" />
+             </div>
+
+            <div className="flex justify-between items-start mb-4 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-red-500/10 rounded-xl group-hover:bg-red-500/20 transition-colors border border-red-500/20">
+                    <LogOut className="w-6 h-6 text-red-500" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">Leave Message</h2>
-                  <p className="text-[#949ba4] text-xs md:text-sm mt-1">ส่งข้อความเมื่อมีคนออกจากเซิร์ฟเวอร์</p>
+                  <h2 className="text-xl font-bold text-foreground">Leave Message</h2>
+                  <p className="text-secondary text-xs md:text-sm mt-1">ส่งข้อความเมื่อมีคนออกจากเซิร์ฟเวอร์</p>
                 </div>
               </div>
 
               <label className="relative inline-flex items-center cursor-pointer scale-110">
-                <input 
-                  type="checkbox" 
-                  className="sr-only peer" 
-                  checked={leaveEnabled} 
-                  onChange={(e) => toggleLeave(e.target.checked)} 
-                />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#fa5252]"></div>
+                <input type="checkbox" className="sr-only peer" checked={leaveEnabled} onChange={(e) => toggleLeave(e.target.checked)} />
+                <div className="w-11 h-6 bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500 peer-checked:shadow-[0_0_10px_rgba(239,68,68,0.5)]"></div>
               </label>
             </div>
             
-            <div className="mt-6 pt-4 border-t border-[#3f4147] flex justify-end">
+            <div className="mt-6 pt-4 border-t border-border flex justify-end relative z-10">
               <Link 
                 href={`/dashboard/${id}/announcements/leave`}
-                className="flex items-center gap-2 px-4 py-2 bg-[#5865f2] hover:bg-[#4752c4] text-white rounded-lg transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
+                className="flex items-center gap-2 px-5 py-2.5 bg-secondary/30 hover:bg-red-500 text-foreground hover:text-white border border-border hover:border-red-500 rounded-xl transition-all duration-300 text-sm font-medium shadow-sm hover:shadow-lg hover:-translate-y-0.5 active:scale-95 group/btn"
               >
-                <Settings className="w-4 h-4" /> ตั้งค่า (Config)
+                <Settings className="w-4 h-4 group-hover/btn:rotate-90 transition-transform" /> ตั้งค่า (Config)
               </Link>
             </div>
           </div>
