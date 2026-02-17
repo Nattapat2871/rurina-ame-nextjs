@@ -197,16 +197,13 @@ export default function LandingPage() {
                         <li><a href="/"><i className="fa-solid fa-house-chimney"></i><span>{t('nav_home')}</span></a></li>
                         <li><a href="https://status.nattapat2871.me"><i className="fa-solid fa-bolt-lightning"></i><span>{t('nav_status')}</span></a></li>
                         
-                        {user && (
-                            <li>
-                                <a href="/dashboard" className="">
-                                    <i className="fa-solid fa-gauge-high"></i>
-                                    <span>{t('nav_dashboard')}</span>
-                                </a>
-                            </li>
-                        )}
-                        
-                        <li><a href="/" className="nav-link-disabled"><i className="fa-solid fa-envelope"></i><span>{t('nav_contact')}</span></a></li>
+                        {/* 🔥 แก้ไข: ลบเงื่อนไข user && ออก และเปลี่ยนปุ่ม Contact เดิมให้เป็น Dashboard */}
+                        <li>
+                            <a href="/dashboard">
+                                <i className="fa-solid fa-gauge-high"></i>
+                                <span>{t('nav_dashboard')}</span>
+                            </a>
+                        </li>
                     </ul>
                 </div>
                 <div className="nav-right">

@@ -26,7 +26,12 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
     const { isDirty, triggerShake } = useUnsavedChanges();
 
     useEffect(() => {
-        if (pathname?.includes('/announcements')) setIsAnnounceExpanded(true);
+        // 🔥 แก้ไข: เช็คทั้ง 2 กรณี เพื่อให้ปิดอัตโนมัติเมื่อออกจากหน้า announcements
+        if (pathname?.includes('/announcements')) {
+            setIsAnnounceExpanded(true);
+        } else {
+            setIsAnnounceExpanded(false);
+        }
     }, [pathname]);
 
     const handleNavigation = (e: React.MouseEvent, href: string) => {
@@ -121,13 +126,24 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
 
                         <div className="px-4 py-2 text-[10px] font-bold text-secondary/70 uppercase tracking-widest">Systems</div>
                         <div className="space-y-1">
-                            <button onClick={() => setIsAnnounceExpanded(!isAnnounceExpanded)} className={`w-full px-4 py-3 rounded-xl flex items-center justify-between transition-all duration-200 group ${pathname?.includes('announcements') ? 'bg-card-hover text-foreground' : 'text-secondary hover:bg-card-hover hover:text-foreground'}`}>
-                                <div className="flex items-center gap-3"><Megaphone className={`w-5 h-5 ${pathname?.includes('announcements') ? 'text-primary' : 'text-secondary group-hover:text-primary transition-colors'}`} /><span className="font-medium">Announcements</span></div>
+                            <Link 
+                                href={`/dashboard/${guildId}/announcements`}
+                                onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/announcements`)}
+                                className={`w-full px-4 py-3 rounded-xl flex items-center justify-between transition-all duration-200 group ${pathname?.includes('announcements') ? 'bg-card-hover text-foreground' : 'text-secondary hover:bg-card-hover hover:text-foreground'}`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Megaphone className={`w-5 h-5 ${pathname?.includes('announcements') ? 'text-primary' : 'text-secondary group-hover:text-primary transition-colors'}`} />
+                                    <span className="font-medium">Announcements</span>
+                                </div>
+                                {/* Icon Chevron จะหมุนตามสถานะ isAnnounceExpanded ซึ่งถูกคุมด้วย useEffect */}
                                 <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isAnnounceExpanded ? 'rotate-180 text-primary' : 'text-secondary/50'}`} />
-                            </button>
+                            </Link>
+
+                            {/* --- เมนูย่อย (ลบ "ตั้งค่ารวม" ออกแล้ว) --- */}
                             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAnnounceExpanded ? 'max-h-56 opacity-100' : 'max-h-0 opacity-0'}`}>
                                 <div className="ml-5 pl-4 border-l-2 border-border/50 space-y-1 py-1">
-                                    <Link href={`/dashboard/${guildId}/announcements`} onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/announcements`)} className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all text-sm ${getSubLinkClass(`/dashboard/${guildId}/announcements`)}`}><CornerDownRight className="w-3 h-3 opacity-50" /> ตั้งค่ารวม</Link>
+                                    {/* ลบ Link "ตั้งค่ารวม" ออกไปแล้ว */}
+                                    
                                     <Link href={`/dashboard/${guildId}/announcements/join`} onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/announcements/join`)} className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all text-sm ${getSubLinkClass(`/dashboard/${guildId}/announcements/join`)}`}><LogIn className="w-3 h-3 opacity-70" /> ข้อความต้อนรับ</Link>
                                     <Link href={`/dashboard/${guildId}/announcements/leave`} onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/announcements/leave`)} className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all text-sm ${getSubLinkClass(`/dashboard/${guildId}/announcements/leave`)}`}><LogOut className="w-3 h-3 opacity-70" /> ข้อความอำลา</Link>
                                     <Link href={`/dashboard/${guildId}/announcements/boost`} onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/announcements/boost`)} className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all text-sm ${getSubLinkClass(`/dashboard/${guildId}/announcements/boost`)}`}><Zap className="w-3 h-3 opacity-70" /> ข้อความบูสต์</Link>

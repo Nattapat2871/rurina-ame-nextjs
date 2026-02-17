@@ -74,8 +74,17 @@ export default function Dashboard() {
                 </div>
             ) : (
               <>
+                {/* 🔥 เพิ่มใหม่: แสดงจำนวนเซิร์ฟเวอร์ทั้งหมดที่เข้าร่วม */}
+                <div className="mb-6 opacity-0 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+                    <div className="inline-flex items-center gap-2 bg-card/40 px-4 py-0.1 rounded-xl border border-border/50 backdrop-blur-sm hover:border-primary/30 transition-colors">
+                        <span className="text-secondary text-sm font-medium">คุณเข้าร่วมเซิร์ฟเวอร์ทั้งหมด</span>
+                        <span className="text-primary font-bold text-lg">{guilds.length}</span>
+                        <span className="text-secondary text-sm font-medium">เซิร์ฟเวอร์</span>
+                    </div>
+                </div>
+
                 {/* --- ส่วนที่ 1: เซิร์ฟเวอร์ที่เป็นแอดมิน --- */}
-                <div className="mb-4 flex items-center gap-2">
+                <div className="mb-4 flex items-center gap-2 opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
                     <h2 className="text-xl font-bold text-foreground">
                         เซิร์ฟเวอร์ที่คุณดูแล
                     </h2>
