@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { X, ChevronDown, Check, Server, Megaphone, CornerDownRight, LayoutGrid, LogIn, LogOut, Zap } from 'lucide-react';
+import { X, ChevronDown, Check, Server, Megaphone, CornerDownRight, LayoutGrid, LogIn, LogOut, Zap, FileText } from 'lucide-react'; // 🔥 เพิ่ม FileText หรือไอคอนที่ชอบ
 import { useState, useEffect, useRef } from 'react';
 import { useUnsavedChanges } from '@/components/providers/UnsavedChangesContext';
 
@@ -18,7 +18,6 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
     
-    // 🔥 แก้ไข 1: เริ่มต้นเป็นค่าว่าง (ไม่ Hardcode ชื่อ)
     const [botName, setBotName] = useState("");
     
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -26,7 +25,6 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
     const { isDirty, triggerShake } = useUnsavedChanges();
 
     useEffect(() => {
-        // 🔥 แก้ไข: เช็คทั้ง 2 กรณี เพื่อให้ปิดอัตโนมัติเมื่อออกจากหน้า announcements
         if (pathname?.includes('/announcements')) {
             setIsAnnounceExpanded(true);
         } else {
@@ -45,13 +43,11 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
     };
 
     useEffect(() => {
-        // Fetch Guilds
         fetch(`${API_URL}/api/guilds/list`, { credentials: 'include' })
             .then(res => res.json())
             .then(data => { if (Array.isArray(data)) setGuilds(data.filter(g => g.bot_in_guild)); })
             .catch(console.error);
         
-        // 🔥 Fetch Bot Info: ดึงชื่อจาก API เท่านั้น
         fetch(`${API_URL}/api/guilds/bot-info`)
             .then(res => res.json())
             .then(data => { if (data.name) setBotName(data.name); })
@@ -72,8 +68,6 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
     return (
         <div className="w-64 bg-card flex flex-col border-r border-border h-full min-h-screen shrink-0 font-sans relative z-40 transition-all duration-300 shadow-2xl">
             <div className="p-3 border-b border-border relative" ref={dropdownRef}>
-                
-                {/* 🔥 แก้ไข 2: ครอบด้วย Link ไปยังหน้า / พร้อม Handle Navigation */}
                 <Link 
                     href="/" 
                     onClick={(e) => handleNavigation(e, "/")}
@@ -81,7 +75,6 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
                 >
                     <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse shrink-0 shadow-[0_0_10px_#4ade80]"></div>
                     <h1 className="text-xl font-black text-primary tracking-tight truncate w-full drop-shadow-md group-hover:text-primary-hover transition-colors">
-                        {/* ถ้ายังโหลดไม่เสร็จ ให้แสดง ... หรือว่างไว้ */}
                         {botName || "..."}
                     </h1>
                 </Link>
@@ -135,26 +128,30 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
                                     <Megaphone className={`w-5 h-5 ${pathname?.includes('announcements') ? 'text-primary' : 'text-secondary group-hover:text-primary transition-colors'}`} />
                                     <span className="font-medium">Announcements</span>
                                 </div>
-                                {/* Icon Chevron จะหมุนตามสถานะ isAnnounceExpanded ซึ่งถูกคุมด้วย useEffect */}
                                 <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isAnnounceExpanded ? 'rotate-180 text-primary' : 'text-secondary/50'}`} />
                             </Link>
 
-                            {/* --- เมนูย่อย (ลบ "ตั้งค่ารวม" ออกแล้ว) --- */}
                             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAnnounceExpanded ? 'max-h-56 opacity-100' : 'max-h-0 opacity-0'}`}>
                                 <div className="ml-5 pl-4 border-l-2 border-border/50 space-y-1 py-1">
-                                    {/* ลบ Link "ตั้งค่ารวม" ออกไปแล้ว */}
-                                    
                                     <Link href={`/dashboard/${guildId}/announcements/join`} onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/announcements/join`)} className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all text-sm ${getSubLinkClass(`/dashboard/${guildId}/announcements/join`)}`}><LogIn className="w-3 h-3 opacity-70" /> ข้อความต้อนรับ</Link>
                                     <Link href={`/dashboard/${guildId}/announcements/leave`} onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/announcements/leave`)} className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all text-sm ${getSubLinkClass(`/dashboard/${guildId}/announcements/leave`)}`}><LogOut className="w-3 h-3 opacity-70" /> ข้อความอำลา</Link>
                                     <Link href={`/dashboard/${guildId}/announcements/boost`} onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/announcements/boost`)} className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all text-sm ${getSubLinkClass(`/dashboard/${guildId}/announcements/boost`)}`}><Zap className="w-3 h-3 opacity-70" /> ข้อความบูสต์</Link>
                                 </div>
                             </div>
+
+                            {/* 🔥 เมนู Server Logs ใหม่ */}
+                            <Link 
+                                href={`/dashboard/${guildId}/logs`}
+                                onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/logs`)}
+                                className={`px-4 py-3 rounded-xl flex items-center gap-3 transition-all duration-200 ${getLinkClass(`/dashboard/${guildId}/logs`)}`}
+                            >
+                                <FileText className="w-5 h-5" /> <span className="font-medium">Server Logs</span>
+                            </Link>
                         </div>
                     </div>
                 )}
             </div>
             
-            {/* Footer */}
             <div className="p-4 border-t border-border bg-background/30 backdrop-blur-sm">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-accent-hover flex items-center justify-center shadow-lg shadow-primary/20 animate-pulse-slow">
