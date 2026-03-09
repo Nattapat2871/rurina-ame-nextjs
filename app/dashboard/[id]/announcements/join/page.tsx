@@ -158,7 +158,8 @@ const ImagePreview = ({ imageData, botInfo, userProfile, guildProfile, guildId, 
                         bg_url: imageData.bg_url, image_title: pTitle, image_username: pUsername, text_content: pText, font_name: imageData.font_name,
                         avatar_url: userAvatarUrl, avatar_shape: imageData.avatar_shape, overlay_opacity: imageData.overlay_opacity, image_position: imageData.image_position,
                         title_color: imageData.title_color, username_color: imageData.username_color, message_color: imageData.message_color, circle_color: imageData.circle_color, overlay_color: imageData.overlay_color
-                    })
+                    }),
+                    credentials: 'include'
                 });
                 if (res.ok && !isCancelled) { const blob = await res.blob(); const newUrl = URL.createObjectURL(blob); setPreviewUrl(prev => { if(prev) URL.revokeObjectURL(prev); return newUrl; }); }
             } catch (e) { console.error(e); } finally { if(!isCancelled) setIsLoading(false); }

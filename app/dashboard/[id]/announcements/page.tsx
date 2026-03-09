@@ -3,15 +3,14 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { LogIn, LogOut, Settings, Zap } from 'lucide-react'; // ✅ เพิ่ม icon Zap (สายฟ้า)
-
+import { LogIn, LogOut, Settings, Zap } from 'lucide-react'; 
 export default function AnnouncementsPage() {
   const { id } = useParams();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   
   const [joinEnabled, setJoinEnabled] = useState<boolean>(false);
   const [leaveEnabled, setLeaveEnabled] = useState<boolean>(false);
-  const [boostEnabled, setBoostEnabled] = useState<boolean>(false); // ✅ เพิ่ม State Boost
+  const [boostEnabled, setBoostEnabled] = useState<boolean>(false); 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +22,7 @@ export default function AnnouncementsPage() {
         const [joinRes, leaveRes, boostRes] = await Promise.all([
           fetch(`${API_URL}/api/announcements/${id}/status`, { credentials: 'include' }),
           fetch(`${API_URL}/api/announcements/${id}/leave_status`, { credentials: 'include' }),
-          fetch(`${API_URL}/api/announcements/${id}/boost_status`, { credentials: 'include' }) // ✅ Fetch Boost
+          fetch(`${API_URL}/api/announcements/${id}/boost_status`, { credentials: 'include' }) 
         ]);
 
         if (joinRes.ok) { const joinData = await joinRes.json(); setJoinEnabled(!!joinData.is_welcome_enabled); }

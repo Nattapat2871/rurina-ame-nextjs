@@ -135,16 +135,19 @@ export default function LogsPage({ params }: { params: Promise<{ id: string }> }
         const fetchData = async () => {
             try {
                 const [channelsRes, settingsRes] = await Promise.all([
-                    fetch(`${API_URL}/api/guilds/${guildId}/check_bot`, { credentials: "include" }),
-                    fetch(`${API_URL}/api/logs/${guildId}`)
-                ]);
-                const channelsData = await channelsRes.json();
-                if (channelsData.channels) setChannels(channelsData.channels);
-                if (channelsData.roles) setRoles(channelsData.roles); 
+    fetch(`${API_URL}/api/guilds/${guildId}/check_bot`, { credentials: "include" }),
+    fetch(`${API_URL}/api/logs/${guildId}`, { credentials: "include" }) // ✅ เติมตรงนี้
+]);
+const channelsData = await channelsRes.json();
+if (channelsData.channels) setChannels(channelsData.channels);
+if (channelsData.roles) setRoles(channelsData.roles); 
 
-                const settingsData = await settingsRes.json();
-                setSettings(settingsData);
-                setInitialSettings(settingsData);
+// ✅ เพิ่มการเช็คว่าโหลดสำเร็จจริงๆ ถึงค่อยเซ็ตค่า กันเว็บขาว
+if (settingsRes.ok) {
+    const settingsData = await settingsRes.json();
+    setSettings(settingsData);
+    setInitialSettings(settingsData);
+}
             } catch (error) {
                 console.error("Error fetching data:", error);
             } finally { 
@@ -167,6 +170,7 @@ export default function LogsPage({ params }: { params: Promise<{ id: string }> }
             const res = await fetch(`${API_URL}/api/logs/${guildId}`, {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(settings),
+                credentials: "include"
             });
             if (res.ok) {
                 setInitialSettings(settings); setIsDirty(false); setGlobalDirty(false);
