@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Megaphone, ArrowRight, Activity, Users, ShieldCheck, Plus } from "lucide-react";
+import { Megaphone, ArrowRight, Activity, Users, ShieldCheck, Plus, FileText } from "lucide-react";
 
 export default function GuildDashboardHome() {
   const { id } = useParams();
@@ -35,7 +35,6 @@ export default function GuildDashboardHome() {
 
   const stats = [
     { 
-        // 🔥 แก้ไขตรงนี้: เปลี่ยนเป็น Total Members และโชว์แค่ยอดรวม
         label: "Total Members", 
         value: statsData.isLoaded ? statsData.member_count.toLocaleString() : "Loading...", 
         icon: Users, color: "text-blue-400", bg: "bg-blue-400/10" 
@@ -102,6 +101,30 @@ export default function GuildDashboardHome() {
             </h3>
             <p className="text-secondary text-sm mb-8 leading-relaxed">
               จัดการระบบประกาศอัตโนมัติ เช่น ข้อความต้อนรับ (Join), ข้อความอำลา (Leave) และการแจ้งเตือน Boost
+            </p>
+            
+            <div className="mt-auto flex items-center gap-2 text-sm font-bold text-primary group-hover:gap-3 transition-all">
+              จัดการเลย <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+        </Link>
+
+        {/* 📋 Server Logs Feature Card */}
+        <Link href={`/dashboard/${id}/logs`} className="group relative bg-card hover:bg-card-hover border border-border hover:border-primary rounded-3xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 overflow-hidden">
+          <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500 pointer-events-none">
+            <FileText className="w-32 h-32 text-primary" />
+          </div>
+          
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-primary transition-colors duration-300">
+              <FileText className="w-7 h-7 text-primary group-hover:text-white transition-colors duration-300" />
+            </div>
+            
+            <h3 className="text-2xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+              Server Logs
+            </h3>
+            <p className="text-secondary text-sm mb-8 leading-relaxed">
+              บันทึกและติดตามทุกกิจกรรมที่เกิดขึ้นภายในเซิร์ฟเวอร์แบบเรียลไทม์ (ข้อความ, สมาชิก, ยศ, ห้อง, ประวัติแอดมิน ฯลฯ)
             </p>
             
             <div className="mt-auto flex items-center gap-2 text-sm font-bold text-primary group-hover:gap-3 transition-all">
