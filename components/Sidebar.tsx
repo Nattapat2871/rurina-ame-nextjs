@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { X, ChevronDown, Check, Server, Megaphone, CornerDownRight, LayoutGrid, LogIn, LogOut, Zap, FileText } from 'lucide-react'; // 🔥 เพิ่ม FileText หรือไอคอนที่ชอบ
+import { X, ChevronDown, Check, Server, Megaphone, CornerDownRight, LayoutGrid, LogIn, LogOut, Zap, FileText, ShieldAlert, Bell, Youtube } from 'lucide-react'; // 🔥 เพิ่ม Bell, Youtube
 import { useState, useEffect, useRef } from 'react';
 import { useUnsavedChanges } from '@/components/providers/UnsavedChangesContext';
 
@@ -17,6 +17,7 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
     const [guilds, setGuilds] = useState<Guild[]>([]);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isAnnounceExpanded, setIsAnnounceExpanded] = useState(false);
+    const [isNotiExpanded, setIsNotiExpanded] = useState(false);
     
     const [botName, setBotName] = useState("");
     
@@ -25,11 +26,8 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
     const { isDirty, triggerShake } = useUnsavedChanges();
 
     useEffect(() => {
-        if (pathname?.includes('/announcements')) {
-            setIsAnnounceExpanded(true);
-        } else {
-            setIsAnnounceExpanded(false);
-        }
+        setIsAnnounceExpanded(pathname?.includes('/announcements') ?? false);
+        setIsNotiExpanded(pathname?.includes('/notification') ?? false);
     }, [pathname]);
 
     const handleNavigation = (e: React.MouseEvent, href: string) => {
@@ -139,7 +137,7 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
                                 </div>
                             </div>
 
-                            {/* 🔥 เมนู Server Logs ใหม่ */}
+                            {/* 🔥 เมนู Server Logs */}
                             <Link 
                                 href={`/dashboard/${guildId}/logs`}
                                 onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/logs`)}
@@ -147,6 +145,37 @@ export default function Sidebar({ guildId, onClose }: { guildId?: string, onClos
                             >
                                 <FileText className="w-5 h-5" /> <span className="font-medium">Server Logs</span>
                             </Link>
+
+                            {/* 🔥 เมนู Anti-Spam ใหม่ */}
+                            <Link 
+                                href={`/dashboard/${guildId}/antispam`}
+                                onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/antispam`)}
+                                className={`px-4 py-3 rounded-xl flex items-center gap-3 transition-all duration-200 ${getLinkClass(`/dashboard/${guildId}/antispam`)}`}
+                            >
+                                <ShieldAlert className="w-5 h-5" /> <span className="font-medium">Anti-Spam</span>
+                            </Link>
+
+                            {/* 🔥 เมนู Notification */}
+                            <div className="space-y-1 mt-2">
+                                <div 
+                                    onClick={() => setIsNotiExpanded(!isNotiExpanded)}
+                                    className={`w-full px-4 py-3 rounded-xl flex items-center justify-between transition-all duration-200 group cursor-pointer ${pathname?.includes('noti') ? 'bg-card-hover text-foreground' : 'text-secondary hover:bg-card-hover hover:text-foreground'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <Bell className={`w-5 h-5 ${pathname?.includes('noti') ? 'text-primary' : 'text-secondary group-hover:text-primary transition-colors'}`} />
+                                        <span className="font-medium">Notification</span>
+                                    </div>
+                                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isNotiExpanded ? 'rotate-180 text-primary' : 'text-secondary/50'}`} />
+                                </div>
+
+                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isNotiExpanded ? 'max-h-56 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    <div className="ml-5 pl-4 border-l-2 border-border/50 space-y-1 py-1">
+                                        <Link href={`/dashboard/${guildId}/notification/youtube`} onClick={(e) => handleNavigation(e, `/dashboard/${guildId}/notification/youtube`)} className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-all text-sm ${getSubLinkClass(`/dashboard/${guildId}/notification/youtube`)}`}>
+                                            <Youtube className="w-3 h-3 opacity-70" /> Youtube
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import ProfileMenu from '@/components/ProfileMenu';
-import { ChevronDown, ChevronUp, Lock } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, Bell } from 'lucide-react';
 
 export default function Dashboard() {
   const [guilds, setGuilds] = useState<any[]>([]);
@@ -54,7 +54,20 @@ export default function Dashboard() {
            <div className="text-foreground font-bold text-xl opacity-0 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               Welcome back! 👋
            </div>
-           <ProfileMenu />
+           <div className="flex items-center gap-4">
+             {/* 🔥 ปุ่ม Notification */}
+             <a 
+               href="https://youtube.com" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               className="relative p-2 rounded-full bg-card hover:bg-card-hover border border-border/50 transition-colors shadow-sm group"
+               title="Notifications (เปิด YouTube)"
+             >
+               <Bell className="w-5 h-5 text-secondary group-hover:text-foreground transition-colors" />
+               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(239,68,68,0.8)]"></span>
+             </a>
+             <ProfileMenu />
+           </div>
         </div>
 
         <div className="flex-1 p-8 md:p-12 overflow-y-auto custom-scrollbar z-10">

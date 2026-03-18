@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef, memo, MouseEvent as ReactMouseEvent } from "react";
 import { 
     Save, RotateCcw, Hash, CheckCircle2, FileText, MessageSquare, 
     User, Server, Radio, Shield, Smile, Blocks, Webhook, PlayCircle, 
     CheckSquare, Square, ShieldAlert, Split, Bot, Mic, Mail, List,
-    Gavel, X, ChevronDown
+    Gavel, X, ChevronDown, Check
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { useUnsavedChanges } from "@/components/providers/UnsavedChangesContext";
@@ -113,6 +113,297 @@ const getCategoryIcon = (category: string) => {
     }
 };
 
+// --- Component: CustomSelect (ขนาดเล็กสำหรับ Event ย่อย - โดนลืมใส่เมื่อกี้ 😅) ---
+interface Option { value: string; label: React.ReactNode; style?: React.CSSProperties; }
+interface CustomSelectProps { options: Option[]; value: string; onChange: (val: string) => void; placeholder?: string; icon?: React.ReactNode; }
+
+const CustomSelect = memo(({ options, value, onChange, placeholder, icon }: CustomSelectProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: globalThis.MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const selectedOption = options.find(o => o.value === value);
+
+    return (
+        <div className={`relative w-full ${isOpen ? 'z-[100]' : 'z-10'}`} ref={containerRef}>
+            <div 
+                className="min-h-[32px] w-full bg-secondary/30 text-foreground px-2.5 py-1.5 rounded-lg border border-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300 cursor-pointer flex justify-between items-center text-xs"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <span className="flex items-center gap-1.5 font-medium truncate" style={selectedOption?.style}>
+                    {icon && icon}
+                    {selectedOption ? selectedOption.label : (placeholder || "-- เลือก --")}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-secondary transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {isOpen && (
+                <div className="absolute right-0 z-50 mt-1.5 w-full min-w-[140px] bg-[#111214]/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] max-h-48 overflow-y-auto custom-scrollbar p-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {options.map(option => {
+                        const isSelected = value === option.value;
+                        return (
+                            <div 
+                                key={option.value} 
+                                onClick={() => { onChange(option.value); setIsOpen(false); }}
+                                className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/20 text-foreground'}`}
+                            >
+                                <span className="text-xs font-medium flex items-center gap-2 truncate" style={option.style}>
+                                    {option.label}
+                                </span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+});
+
+// --- Component: ChannelSelect (เลือกห้องแชทหลัก) ---
+interface ChannelSelectProps { channels: Channel[]; selectedChannelId: string; onChange: (channelId: string) => void; disabled?: boolean; placeholder?: string; }
+const ChannelSelect = memo(({ channels, selectedChannelId, onChange, disabled = false, placeholder = "-- เลือกห้องดิสคอร์ด --" }: ChannelSelectProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: globalThis.MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const selectedChannel = channels.find(c => c.id === selectedChannelId);
+
+    return (
+        <div className={`relative w-full ${isOpen ? 'z-[100]' : 'z-10'}`} ref={containerRef}>
+            <div 
+                className={`min-h-[46px] w-full bg-secondary/30 text-foreground p-3 rounded-xl border border-border transition-all duration-300 flex justify-between items-center text-sm ${disabled ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20'}`}
+                onClick={() => !disabled && setIsOpen(!isOpen)}
+            >
+                {selectedChannel ? (
+                    <span className="flex items-center gap-2 font-medium">
+                        <Hash className="w-4 h-4 text-secondary/70" />
+                        {selectedChannel.name} 
+                        {selectedChannel.category && <span className="text-secondary/50 text-[11px] font-normal ml-1">| {selectedChannel.category}</span>}
+                    </span>
+                ) : (
+                    <span className="text-secondary/50">{placeholder}</span>
+                )}
+                <ChevronDown className={`w-4 h-4 text-secondary transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {isOpen && !disabled && (
+                <div className="absolute z-50 mt-2 w-full bg-[#111214]/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] max-h-56 overflow-y-auto custom-scrollbar p-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div 
+                        onClick={() => { onChange(""); setIsOpen(false); }}
+                        className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${!selectedChannelId ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/20 text-foreground'}`}
+                    >
+                        <span className="text-sm font-medium">ปิดการใช้งาน (ไม่เลือก)</span>
+                    </div>
+                    {channels.map(channel => {
+                        const isSelected = selectedChannelId === channel.id;
+                        return (
+                            <div 
+                                key={channel.id} 
+                                onClick={() => { onChange(channel.id); setIsOpen(false); }}
+                                className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/20 text-foreground'}`}
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <Hash className="w-4 h-4 text-secondary/70 shrink-0" />
+                                    <span className="text-sm font-medium flex items-center flex-wrap gap-1">
+                                        {channel.name}
+                                        {channel.category && <span className="text-secondary/50 text-[11px] font-normal">| {channel.category}</span>}
+                                    </span>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-primary shrink-0" />}
+                            </div>
+                        );
+                    })}
+                    {channels.length === 0 && <div className="p-3 text-center text-secondary text-sm">ไม่พบห้องแชทในเซิร์ฟเวอร์</div>}
+                </div>
+            )}
+        </div>
+    );
+});
+
+// --- Component: MultiChannelSelect (สำหรับเลือกหลายห้องใน Ignored Channels) ---
+interface MultiChannelSelectProps { channels: Channel[]; selectedChannels: string[]; onChange: (channels: string[]) => void; }
+const MultiChannelSelect = memo(({ channels, selectedChannels, onChange }: MultiChannelSelectProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: globalThis.MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const toggleChannel = (channelId: string) => {
+        if (selectedChannels.includes(channelId)) {
+            onChange(selectedChannels.filter(id => id !== channelId));
+        } else {
+            onChange([...selectedChannels, channelId]);
+        }
+    };
+
+    const removeChannel = (e: ReactMouseEvent, channelId: string) => {
+        e.stopPropagation();
+        onChange(selectedChannels.filter(id => id !== channelId));
+    };
+
+    return (
+        <div className={`relative w-full ${isOpen ? 'z-[100]' : 'z-10'}`} ref={containerRef}>
+            <div 
+                className="min-h-[46px] w-full bg-secondary/30 text-foreground p-2 rounded-xl border border-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300 cursor-pointer flex justify-between items-center"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex flex-wrap gap-2 items-center flex-1">
+                    {selectedChannels.length === 0 && <span className="text-secondary/50 text-sm px-2">-- ค้นหาและเพิ่มห้องที่ต้องการละเว้น --</span>}
+                    {selectedChannels.map(id => {
+                        const channel = channels.find(c => c.id === id);
+                        return (
+                            <span key={id} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 bg-secondary/20 text-foreground px-2.5 py-1 rounded-lg text-xs font-medium border border-border hover:border-primary/50 transition-colors shadow-sm cursor-default group">
+                                <Hash className="w-3.5 h-3.5 text-secondary/70" />
+                                {channel?.name || id}
+                                <button type="button" onClick={(e) => removeChannel(e, id)} className="text-secondary group-hover:text-red-500 ml-1 transition-colors cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                            </span>
+                        );
+                    })}
+                </div>
+                <ChevronDown className={`w-4 h-4 text-secondary transition-transform duration-300 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {isOpen && (
+                <div className="absolute z-50 mt-2 w-full bg-[#111214]/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] max-h-56 overflow-y-auto custom-scrollbar p-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {channels.map(channel => {
+                        const isSelected = selectedChannels.includes(channel.id);
+                        return (
+                            <div 
+                                key={channel.id} 
+                                onClick={() => toggleChannel(channel.id)}
+                                className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/20 text-foreground'}`}
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <Hash className="w-4 h-4 text-secondary/70 shrink-0" />
+                                    <span className="text-sm font-medium flex items-center flex-wrap gap-1">
+                                        {channel.name}
+                                        {channel.category && <span className="text-secondary/50 text-[11px] font-normal">| {channel.category}</span>}
+                                    </span>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-primary shrink-0" />}
+                            </div>
+                        );
+                    })}
+                    {channels.length === 0 && <div className="p-3 text-center text-secondary text-sm">ไม่พบห้องแชทในเซิร์ฟเวอร์</div>}
+                </div>
+            )}
+        </div>
+    );
+});
+
+// --- Component: MultiRoleSelect (เลือกยศแบบ Dropdown มีสี/Tag) ---
+interface MultiRoleSelectProps { roles: Role[]; selectedRoles: string[]; onChange: (roles: string[]) => void; }
+const MultiRoleSelect = memo(({ roles, selectedRoles, onChange }: MultiRoleSelectProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: globalThis.MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const toggleRole = (roleId: string) => {
+        if (selectedRoles.includes(roleId)) {
+            onChange(selectedRoles.filter(id => id !== roleId));
+        } else {
+            onChange([...selectedRoles, roleId]);
+        }
+    };
+
+    const removeRole = (e: ReactMouseEvent, roleId: string) => {
+        e.stopPropagation();
+        onChange(selectedRoles.filter(id => id !== roleId));
+    };
+
+    return (
+        <div className={`relative w-full ${isOpen ? 'z-[100]' : 'z-10'}`} ref={containerRef}>
+            <div 
+                className="min-h-[46px] w-full bg-secondary/30 text-foreground p-2 rounded-xl border border-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300 cursor-pointer flex justify-between items-center"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex flex-wrap gap-2 items-center flex-1">
+                    {selectedRoles.length === 0 && <span className="text-secondary/50 text-sm px-2">-- ค้นหาและเพิ่มยศที่ต้องการละเว้น --</span>}
+                    {selectedRoles.map(id => {
+                        const role = roles.find(r => r.id === id);
+                        if (!role) return null;
+                        return (
+                            <span key={id} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 bg-card border border-border px-2.5 py-1 rounded-lg text-xs font-medium hover:border-primary/50 transition-colors shadow-sm cursor-default group">
+                                {role.color && role.color !== '#000000' ? (
+                                    <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: role.color }}></span>
+                                ) : (
+                                    <span className="text-secondary font-bold">@</span>
+                                )}
+                                {role.name}
+                                <button type="button" onClick={(e) => removeRole(e, id)} className="text-secondary group-hover:text-red-500 ml-0.5 transition-colors cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                            </span>
+                        );
+                    })}
+                </div>
+                <ChevronDown className={`w-4 h-4 text-secondary transition-transform duration-300 shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {isOpen && (
+                <div className="absolute z-50 mt-2 w-full bg-[#111214]/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] max-h-56 overflow-y-auto custom-scrollbar p-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {roles.map(role => {
+                        const isSelected = selectedRoles.includes(role.id);
+                        return (
+                            <div 
+                                key={role.id} 
+                                onClick={() => toggleRole(role.id)}
+                                className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/20 text-foreground'}`}
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    {role.color && role.color !== '#000000' ? (
+                                        <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: role.color }}></span>
+                                    ) : (
+                                        <span className="text-secondary/70 font-bold bg-secondary/10 w-5 h-5 flex items-center justify-center rounded-full text-[10px]">@</span>
+                                    )}
+                                    <span className="text-sm font-medium">{role.name}</span>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-primary" />}
+                            </div>
+                        );
+                    })}
+                    {roles.length === 0 && <div className="p-3 text-center text-secondary text-sm">ไม่พบยศในเซิร์ฟเวอร์</div>}
+                </div>
+            )}
+        </div>
+    );
+});
+
+
 export default function LogsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: guildId } = use(params);
     const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -135,19 +426,18 @@ export default function LogsPage({ params }: { params: Promise<{ id: string }> }
         const fetchData = async () => {
             try {
                 const [channelsRes, settingsRes] = await Promise.all([
-    fetch(`${API_URL}/api/guilds/${guildId}/check_bot`, { credentials: "include" }),
-    fetch(`${API_URL}/api/logs/${guildId}`, { credentials: "include" }) // ✅ เติมตรงนี้
-]);
-const channelsData = await channelsRes.json();
-if (channelsData.channels) setChannels(channelsData.channels);
-if (channelsData.roles) setRoles(channelsData.roles); 
+                    fetch(`${API_URL}/api/guilds/${guildId}/check_bot`, { credentials: "include" }),
+                    fetch(`${API_URL}/api/logs/${guildId}`, { credentials: "include" })
+                ]);
+                const channelsData = await channelsRes.json();
+                if (channelsData.channels) setChannels(channelsData.channels);
+                if (channelsData.roles) setRoles(channelsData.roles); 
 
-// ✅ เพิ่มการเช็คว่าโหลดสำเร็จจริงๆ ถึงค่อยเซ็ตค่า กันเว็บขาว
-if (settingsRes.ok) {
-    const settingsData = await settingsRes.json();
-    setSettings(settingsData);
-    setInitialSettings(settingsData);
-}
+                if (settingsRes.ok) {
+                    const settingsData = await settingsRes.json();
+                    setSettings(settingsData);
+                    setInitialSettings(settingsData);
+                }
             } catch (error) {
                 console.error("Error fetching data:", error);
             } finally { 
@@ -202,26 +492,11 @@ if (settingsRes.ok) {
         setSettings(prev => ({ ...prev, event_channels: { ...prev.event_channels, [eventId]: channelId } }));
     };
 
-    const addIgnoredChannel = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value;
-        if (val && !settings.ignored_channels.includes(val)) setSettings(s => ({ ...s, ignored_channels: [...s.ignored_channels, val] }));
-        e.target.value = ""; 
-    };
-    const removeIgnoredChannel = (id: string) => setSettings(s => ({ ...s, ignored_channels: s.ignored_channels.filter(c => c !== id) }));
-
-    const addIgnoredRole = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value;
-        if (val && !settings.ignored_roles.includes(val)) setSettings(s => ({ ...s, ignored_roles: [...s.ignored_roles, val] }));
-        e.target.value = ""; 
-    };
-    const removeIgnoredRole = (id: string) => setSettings(s => ({ ...s, ignored_roles: s.ignored_roles.filter(r => r !== id) }));
-
     if (isLoading) return <div className="p-10 text-center text-secondary animate-pulse flex flex-col items-center gap-4"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>กำลังโหลดข้อมูล...</div>;
 
     return (
         <div className="flex flex-col pb-32 p-4 md:p-8 min-h-screen max-w-[1920px] mx-auto bg-background/50 font-sans">
             
-            {/* CSS Keyframes สำหรับอนิเมชั่น แทรกไว้ในคอมโพเนนต์เลยเพื่อความชัวร์และแก้ FOUC */}
             <style dangerouslySetInnerHTML={{ __html: `
                 @keyframes fadeInUp {
                     0% { opacity: 0; transform: translateY(20px); }
@@ -241,7 +516,7 @@ if (settingsRes.ok) {
                 }
             `}} />
 
-            {/* Header (Fade In & Slide Up) */}
+            {/* Header */}
             <div className="flex justify-between items-center mb-6 md:mb-10 animate-fade-in-up" style={{ animationDelay: '0ms' }}>
                 <div>
                     <h1 className="text-2xl md:text-4xl font-extrabold text-foreground tracking-tight drop-shadow-md">ระบบบันทึกเหตุการณ์</h1>
@@ -253,11 +528,11 @@ if (settingsRes.ok) {
                 </label>
             </div>
 
-            {/* Main Content Wrapper */}
-            <div className={`transition-all duration-500 ${!settings.is_enabled ? 'opacity-50 grayscale-[0.5] pointer-events-none' : ''}`}>
+            {/* 🔥 กล่องคลุมสำหรับทำ Dim Animation */}
+            <div className={`flex flex-col transition-all duration-500 ease-in-out ${!settings.is_enabled ? 'opacity-50 pointer-events-none select-none grayscale-[20%]' : 'opacity-100 grayscale-0'}`}>
                 
                 {/* 1. Main Channel Select */}
-                <div className={`bg-card backdrop-blur-md rounded-3xl border border-border shadow-xl mb-6 p-5 md:p-8 animate-fade-in-up ${settings.use_event_channels ? 'opacity-50 pointer-events-none' : ''}`} style={{ animationDelay: '150ms' }}>
+                <div className={`relative z-[40] bg-card backdrop-blur-md rounded-3xl border border-border shadow-xl mb-6 p-5 md:p-8 animate-fade-in-up ${settings.use_event_channels ? 'opacity-50 pointer-events-none' : ''}`} style={{ animationDelay: '150ms' }}>
                     <div className="flex justify-between items-start mb-4 md:mb-6 border-b border-border/50 pb-3">
                         <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2">
                             <Hash className="w-5 h-5 text-primary" /> ช่องหลัก (Main Channel)
@@ -266,22 +541,25 @@ if (settingsRes.ok) {
                     </div>
                     <div className="max-w-xl">
                         <label className="block text-secondary text-xs font-bold uppercase mb-2 tracking-wide">เลือกห้องหลัก (สำหรับเหตุการณ์ที่ไม่ได้แยกช่อง)</label>
-                        <select value={settings.log_channel_id || ""} onChange={(e) => setSettings({ ...settings, log_channel_id: e.target.value || null })} className="w-full bg-background text-foreground p-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer text-sm" disabled={settings.use_event_channels}>
-                            <option value="">-- ปิดการใช้งาน (ไม่เลือก) --</option>
-                            {channels.map(c => <option key={c.id} value={c.id}># {c.name} {c.category ? `| ${c.category}` : ''}</option>)}
-                        </select>
+                        {/* 🔥 นำ ChannelSelect มาใช้ */}
+                        <ChannelSelect 
+                            channels={channels} 
+                            selectedChannelId={settings.log_channel_id || ""} 
+                            onChange={(id) => setSettings({ ...settings, log_channel_id: id || null })} 
+                            disabled={settings.use_event_channels}
+                            placeholder="-- ปิดการใช้งาน (ไม่เลือก) --"
+                        />
                     </div>
                 </div>
 
                 {/* 2. Standard Events Grid */}
-                <div className="bg-card backdrop-blur-md rounded-3xl border border-border shadow-xl mb-6 p-5 md:p-8 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                <div className="relative z-[30] bg-card backdrop-blur-md rounded-3xl border border-border shadow-xl mb-6 p-5 md:p-8 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 border-b border-border/50 pb-4">
                         <div className="flex-1">
                             <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-500" /> กำหนดค่าเหตุการณ์ (Events)</h2>
                             <p className="text-secondary text-xs md:text-sm mt-1">เลือกกิจกรรมที่ต้องการให้บอทแจ้งเตือนใน Log</p>
                         </div>
                         
-                        {/* Animated Select/Deselect All buttons */}
                         <div className={`flex gap-2 transition-all duration-500 ease-in-out origin-right ${!settings.use_event_channels ? 'opacity-100 scale-100 translate-x-0 w-auto' : 'opacity-0 scale-95 translate-x-4 w-0 overflow-hidden pointer-events-none'}`}>
                             <button onClick={() => toggleAllEvents(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-xs font-bold whitespace-nowrap"><CheckSquare className="w-4 h-4" /> เลือกทั้งหมด</button>
                             <button onClick={() => toggleAllEvents(false)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs font-bold whitespace-nowrap"><Square className="w-4 h-4" /> ยกเลิกทั้งหมด</button>
@@ -300,28 +578,38 @@ if (settingsRes.ok) {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {/* 🔥 เพิ่ม Z-index ย้อนกลับให้การ์ดหมวดหมู่ เพื่อไม่ให้ Dropdown ของแถวบนโดนแถวล่างทับ */}
                         {categories.map((category, index) => (
-                            <div key={category} className="bg-secondary/5 border border-border rounded-2xl p-5 hover:border-primary/30 transition-colors animate-zoom-in" style={{ animationDelay: `${400 + (index * 50)}ms` }}>
+                            <div key={category} className="relative bg-secondary/5 border border-border rounded-2xl p-5 hover:border-primary/30 transition-colors animate-zoom-in" style={{ zIndex: 50 - index, animationDelay: `${400 + (index * 50)}ms` }}>
                                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border/50">
                                     {getCategoryIcon(category)}<h3 className="text-base font-bold text-foreground">{category}</h3>
                                 </div>
-                                <div className="space-y-1">
-                                    {availableEvents.filter(e => e.category === category).map(event => (
-                                        <div key={event.id} className={`flex items-center justify-between p-2 rounded-lg transition-colors group ${settings.use_event_channels ? '' : 'hover:bg-background/50 cursor-pointer'}`} onClick={() => !settings.use_event_channels && toggleEvent(event.id)}>
+                                <div className="space-y-1 relative">
+                                    {/* 🔥 เพิ่ม Z-index ย้อนกลับให้ Event Row ย่อย */}
+                                    {availableEvents.filter(e => e.category === category).map((event, eventIdx) => (
+                                        <div key={event.id} className={`relative flex items-center justify-between p-2 rounded-lg transition-colors group ${settings.use_event_channels ? 'overflow-visible' : 'hover:bg-background/50 cursor-pointer'}`} style={{ zIndex: 50 - eventIdx }} onClick={() => !settings.use_event_channels && toggleEvent(event.id)}>
                                             <span className="text-sm text-secondary font-medium group-hover:text-foreground transition-colors flex-1 flex items-center truncate pr-2">
                                                 <span className="truncate">{event.label}</span>
                                                 {event.isBeta && <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-500 border border-red-500/50 uppercase flex-shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.2)]">Beta</span>}
                                             </span>
                                             
-                                            {/* Animation Wrapper for Select vs Checkbox */}
                                             <div className={`relative flex items-center justify-end h-8 transition-all duration-500 ease-in-out ${settings.use_event_channels ? 'w-32 sm:w-40' : 'w-5'}`}>
-                                                {/* Select Dropdown */}
+                                                {/* 🔥 นำ CustomSelect ขนาดเล็กมาใช้สำหรับ Event ย่อย */}
                                                 <div className={`absolute right-0 w-32 sm:w-40 origin-right transition-all duration-500 ease-in-out ${settings.use_event_channels ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-95 translate-x-4 pointer-events-none'}`} onClick={(e) => e.stopPropagation()}>
-                                                    <select value={settings.event_channels[event.id] || ""} onChange={(e) => handleEventChannelChange(event.id, e.target.value)} className={`w-full p-1.5 text-xs rounded-lg border focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer bg-background ${settings.event_channels[event.id] ? 'border-primary/50 text-primary font-medium' : 'border-border text-secondary/70'}`}>
-                                                        <option value="">ปิด (ไม่ส่ง)</option>
-                                                        {channels.map(c => <option key={c.id} value={c.id}># {c.name.substring(0, 15)}{c.name.length > 15 ? '...' : ''}</option>)}
-                                                    </select>
+                                                    <CustomSelect 
+                                                        value={settings.event_channels[event.id] || ""} 
+                                                        onChange={(val) => handleEventChannelChange(event.id, val)} 
+                                                        placeholder="ปิด (ไม่ส่ง)"
+                                                        options={[
+                                                            { value: "", label: "ปิด (ไม่ส่ง)" },
+                                                            ...channels.map(c => ({ 
+                                                                value: c.id, 
+                                                                label: `# ${c.name.substring(0, 15)}${c.name.length > 15 ? '...' : ''}` 
+                                                            }))
+                                                        ]}
+                                                    />
                                                 </div>
+                                                
                                                 {/* Checkbox */}
                                                 <div className={`absolute right-0 flex items-center justify-center origin-center transition-all duration-500 ease-in-out ${!settings.use_event_channels ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-50 -translate-x-4 pointer-events-none'}`}>
                                                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors duration-300 ${settings.active_events[event.id] ? 'bg-primary border-primary' : 'border-border bg-background group-hover:border-primary/50'}`}>
@@ -338,8 +626,8 @@ if (settingsRes.ok) {
                 </div>
 
                 {/* 3. Ignored Channels */}
-                <div className="bg-card backdrop-blur-md rounded-3xl border border-border shadow-xl mb-6 overflow-hidden animate-fade-in-up" style={{ animationDelay: '600ms' }}>
-                    <div className="p-5 md:p-6 flex justify-between items-center bg-secondary/5">
+                <div className="relative z-[20] bg-card backdrop-blur-md rounded-3xl border border-border shadow-xl mb-6 animate-fade-in-up" style={{ animationDelay: '600ms' }}>
+                    <div className="p-5 md:p-6 flex justify-between items-center bg-secondary/5 rounded-t-3xl">
                         <div className="flex-1">
                             <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><Hash className="w-5 h-5 text-orange-400" /> ช่องที่ต้องการละเว้น (Ignored Channels)</h2>
                             <p className="text-secondary text-xs md:text-sm mt-1">ตั้งค่าช่องที่ไม่ต้องการให้ส่ง Logs (เหตุการณ์ในช่องเหล่านี้จะไม่ถูกบันทึก)</p>
@@ -352,27 +640,17 @@ if (settingsRes.ok) {
                             <ChevronDown className={`text-secondary w-5 h-5 transition-transform duration-300 ${settings.active_events["_ignored_channels_enabled"] ? "rotate-180" : ""}`} />
                         </div>
                     </div>
+                    {/* 🔥 แก้ไข overflow-hidden เพื่อไม่ให้กล่อง dropdown โดนตัดขอบ */}
                     <div className={`grid transition-[grid-template-rows,opacity] duration-500 ease-in-out ${settings.active_events["_ignored_channels_enabled"] ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                        <div className="overflow-hidden">
+                        <div className={settings.active_events["_ignored_channels_enabled"] ? "overflow-visible" : "overflow-hidden"}>
                             <div className="p-5 md:p-8 border-t border-border/50">
                                 <div className="max-w-2xl">
                                     <label className="block text-secondary text-xs font-bold tracking-wide uppercase mb-3">ค้นหาและเพิ่มช่องที่ต้องการละเว้น</label>
-                                    {settings.ignored_channels.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mb-4">
-                                            {settings.ignored_channels.map(id => (
-                                                <div key={id} className="flex items-center gap-1.5 bg-secondary/20 text-foreground px-3 py-1.5 rounded-full text-xs font-medium border border-border animate-zoom-in duration-200">
-                                                    <span># {channels.find(c => c.id === id)?.name || id}</span>
-                                                    <X className="w-3.5 h-3.5 cursor-pointer hover:text-red-400" onClick={() => removeIgnoredChannel(id)} />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <select onChange={addIgnoredChannel} value="" className="w-full bg-background text-foreground p-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer text-sm">
-                                        <option value="" disabled>-- เลือกช่อง --</option>
-                                        {channels.filter(c => !settings.ignored_channels.includes(c.id)).map(c => (
-                                            <option key={c.id} value={c.id}># {c.name}</option>
-                                        ))}
-                                    </select>
+                                    <MultiChannelSelect 
+                                        channels={channels} 
+                                        selectedChannels={settings.ignored_channels} 
+                                        onChange={(newChannels) => setSettings(s => ({ ...s, ignored_channels: newChannels }))} 
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -380,8 +658,8 @@ if (settingsRes.ok) {
                 </div>
 
                 {/* 4. Ignored Roles */}
-                <div className="bg-card backdrop-blur-md rounded-3xl border border-border shadow-xl mb-6 overflow-hidden animate-fade-in-up" style={{ animationDelay: '750ms' }}>
-                    <div className="p-5 md:p-6 flex justify-between items-center bg-secondary/5">
+                <div className="relative z-[15] bg-card backdrop-blur-md rounded-3xl border border-border shadow-xl mb-6 animate-fade-in-up" style={{ animationDelay: '750ms' }}>
+                    <div className="p-5 md:p-6 flex justify-between items-center bg-secondary/5 rounded-t-3xl">
                         <div className="flex-1">
                             <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-yellow-500" /> ยศที่ต้องการละเว้น (Ignored Roles)</h2>
                             <p className="text-secondary text-xs md:text-sm mt-1">ตั้งค่ายศที่ไม่ต้องการให้ส่ง Logs (การกระทำของสมาชิกที่มียศเหล่านี้จะไม่ถูกบันทึก)</p>
@@ -394,31 +672,17 @@ if (settingsRes.ok) {
                             <ChevronDown className={`text-secondary w-5 h-5 transition-transform duration-300 ${settings.active_events["_ignored_roles_enabled"] ? "rotate-180" : ""}`} />
                         </div>
                     </div>
+                    {/* 🔥 แก้ไข overflow-hidden เพื่อไม่ให้กล่อง dropdown โดนตัดขอบ */}
                     <div className={`grid transition-[grid-template-rows,opacity] duration-500 ease-in-out ${settings.active_events["_ignored_roles_enabled"] ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                        <div className="overflow-hidden">
+                        <div className={settings.active_events["_ignored_roles_enabled"] ? "overflow-visible" : "overflow-hidden"}>
                             <div className="p-5 md:p-8 border-t border-border/50">
                                 <div className="max-w-2xl">
                                     <label className="block text-secondary text-xs font-bold tracking-wide uppercase mb-3">ค้นหาและเพิ่มยศที่ต้องการละเว้น</label>
-                                    {settings.ignored_roles.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mb-4">
-                                            {settings.ignored_roles.map(id => {
-                                                const role = roles.find(r => r.id === id);
-                                                return (
-                                                    <div key={id} className="flex items-center gap-1.5 bg-secondary/20 text-foreground px-3 py-1.5 rounded-full text-xs font-medium border border-border animate-zoom-in duration-200">
-                                                        {role?.color && role.color !== "#000000" && <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: role.color }}></span>}
-                                                        <span>@ {role?.name || id}</span>
-                                                        <X className="w-3.5 h-3.5 cursor-pointer hover:text-red-400" onClick={() => removeIgnoredRole(id)} />
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                    <select onChange={addIgnoredRole} value="" className="w-full bg-background text-foreground p-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer text-sm">
-                                        <option value="" disabled>-- เลือกยศ --</option>
-                                        {roles.filter(r => !settings.ignored_roles.includes(r.id)).map(r => (
-                                            <option key={r.id} value={r.id}>@ {r.name}</option>
-                                        ))}
-                                    </select>
+                                    <MultiRoleSelect 
+                                        roles={roles} 
+                                        selectedRoles={settings.ignored_roles} 
+                                        onChange={(newRoles) => setSettings(s => ({ ...s, ignored_roles: newRoles }))} 
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -426,8 +690,8 @@ if (settingsRes.ok) {
                 </div>
 
                 {/* 5. Moderation Logs */}
-                <div className="bg-[#1e293b]/70 backdrop-blur-md rounded-3xl border border-[#334155] shadow-xl mb-8 overflow-hidden animate-fade-in-up" style={{ animationDelay: '900ms' }}>
-                    <div className="p-5 md:p-6 flex justify-between items-center">
+                <div className="relative z-[10] bg-[#1e293b]/70 backdrop-blur-md rounded-3xl border border-[#334155] shadow-xl mb-8 animate-fade-in-up" style={{ animationDelay: '900ms' }}>
+                    <div className="p-5 md:p-6 flex justify-between items-center rounded-t-3xl">
                         <div className="flex-1">
                             <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2"><Gavel className="w-5 h-5 text-red-400" /> ประวัติการจัดการ (Moderation Logs)</h2>
                             <p className="text-gray-300 text-xs md:text-sm mt-1">กำหนดค่าการส่ง Log สำหรับการกระทำของแอดมินโดยเฉพาะ (เช่น แบน, เตะ, ปิดไมค์)</p>
@@ -440,20 +704,22 @@ if (settingsRes.ok) {
                             <ChevronDown className={`text-gray-300 w-5 h-5 transition-transform duration-300 ${settings.active_events["_mod_logs_enabled"] ? "rotate-180" : ""}`} />
                         </div>
                     </div>
+                    {/* 🔥 แก้ไข overflow-hidden เพื่อไม่ให้กล่อง dropdown โดนตัดขอบ */}
                     <div className={`grid transition-[grid-template-rows,opacity] duration-500 ease-in-out ${settings.active_events["_mod_logs_enabled"] ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                        <div className="overflow-hidden">
-                            <div className="p-5 md:p-8 border-t border-[#334155] bg-[#0f172a]/50">
-                                
-                                <div className="mb-8 max-w-xl">
+                        <div className={settings.active_events["_mod_logs_enabled"] ? "overflow-visible" : "overflow-hidden"}>
+                            <div className="p-5 md:p-8 border-t border-[#334155] bg-[#0f172a]/50 rounded-b-3xl">
+                                <div className="mb-8 max-w-xl relative z-20">
                                     <label className="block text-gray-300 text-xs font-bold tracking-wide uppercase mb-2">ช่องบันทึกประวัติการจัดการ</label>
                                     <p className="text-gray-400 text-[10px] mb-3">เลือกห้องที่ต้องการให้บันทึกประวัติการกระทำของแอดมิน</p>
-                                    <select value={settings.event_channels["_mod_log_channel"] || ""} onChange={(e) => handleEventChannelChange("_mod_log_channel", e.target.value)} className="w-full bg-[#020617] text-white p-3 rounded-xl border border-white/10 focus:border-blue-500 focus:ring-2 transition-all cursor-pointer text-sm">
-                                        <option value="">-- ไม่เลือก (ปิด) --</option>
-                                        {channels.map(c => <option key={c.id} value={c.id}># {c.name}</option>)}
-                                    </select>
+                                    <ChannelSelect 
+                                        channels={channels} 
+                                        selectedChannelId={settings.event_channels["_mod_log_channel"] || ""} 
+                                        onChange={(id) => handleEventChannelChange("_mod_log_channel", id)} 
+                                        placeholder="-- ไม่เลือก (ปิด) --"
+                                    />
                                 </div>
 
-                                <div className="space-y-6">
+                                <div className="space-y-6 relative z-10">
                                     <div>
                                         <h3 className="text-gray-300 text-xs font-bold tracking-wide uppercase mb-3">การจัดการสมาชิก (Moderation Actions)</h3>
                                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -486,14 +752,14 @@ if (settingsRes.ok) {
                     </div>
                 </div>
 
-            </div>
+            </div> {/* <-- จบ Wrapper สำหรับ Dim */}
 
             {/* Floating Action Bar */}
-            <div className={`fixed bottom-0 left-0 right-0 p-4 md:p-6 lg:ml-64 flex justify-center items-center transition-all duration-500 transform pointer-events-none ${isDirty ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'} z-[70]`}>
+            <div className={`fixed bottom-0 left-0 right-0 p-4 md:p-6 lg:ml-64 flex justify-center items-center transition-all duration-500 transform pointer-events-none ${isDirty ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'} z-[200]`}>
                 <div className={`pointer-events-auto bg-[#111214]/95 backdrop-blur-md border border-border p-3 md:p-4 rounded-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col sm:flex-row items-center gap-4 sm:gap-6 max-w-2xl w-full justify-between animate-in slide-in-from-bottom-10 fade-in duration-500 ${shouldShake ? 'animate-shake-error' : ''}`}>
                     <span className="text-white font-medium flex items-center gap-2 pl-2 text-sm md:text-base"><span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>คุณมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก</span>
                     <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
-                        <button type="button" onClick={handleReset} className="flex-1 sm:flex-none flex justify-center items-center gap-2 text-secondary hover:text-foreground px-3 md:px-4 py-2 rounded-xl hover:bg-secondary/20 transition-all font-medium text-xs md:text-sm bg-secondary/10 sm:bg-transparent"><RotateCcw className="w-3 h-3 md:w-4 md:h-4" /> คืนค่าเดิม</button>
+                        <button type="button" onClick={handleReset} className="flex-1 sm:flex-none flex justify-center items-center gap-2 text-secondary hover:text-foreground px-3 md:px-4 py-2 rounded-xl hover:bg-secondary/20 transition-all font-medium text-xs md:text-sm bg-secondary/10 sm:bg-transparent"><RotateCcw className="w-3 h-3 md:w-4 md:h-4" /> Reset</button>
                         <button type="button" onClick={handleSave} disabled={isSaving} className="flex-1 sm:flex-none justify-center bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 md:px-6 rounded-xl shadow-lg hover:-translate-y-1 transition-all flex items-center gap-2 text-xs md:text-sm">{isSaving ? <div className="w-3 h-3 md:w-4 md:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Save className="w-3 h-3 md:w-4 md:h-4" />}<span className="hidden sm:inline">บันทึกการเปลี่ยนแปลง</span><span className="sm:hidden">บันทึก</span></button>
                     </div>
                 </div>

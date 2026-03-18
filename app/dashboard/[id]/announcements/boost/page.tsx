@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef, ChangeEvent, MouseEvent, FormEvent, memo } from 'react';
+import { useEffect, useState, useRef, ChangeEvent, MouseEvent as ReactMouseEvent, FormEvent, memo } from 'react';
 import { useParams } from 'next/navigation';
 import Swal from 'sweetalert2';
-import { Save, RotateCcw, Image as ImageIcon, Layout, Type, Layers, Palette, Info, BookOpen, Link as LinkIcon, Clock, Plus, Trash2, Columns, Zap } from 'lucide-react';
+import { Save, RotateCcw, Image as ImageIcon, Layout, Type, Layers, Palette, Info, BookOpen, Link as LinkIcon, Clock, Plus, Trash2, Columns, Zap, Hash, Check, ChevronDown } from 'lucide-react';
 import { useUnsavedChanges } from '@/components/providers/UnsavedChangesContext';
 
 // --- Interfaces & Constants ---
@@ -62,7 +62,7 @@ const SmartInput = memo(({ value, onChange, placeholder, className, wrapperClass
         }
     };
 
-    const inputClasses = `w-full bg-secondary/30 text-foreground p-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 placeholder:text-secondary/50 text-sm ${className || ""}`;
+    const inputClasses = `w-full bg-secondary/30 text-foreground p-3 rounded-xl border border-border focus:border-[#FF73FA] focus:ring-2 focus:ring-[#FF73FA]/20 transition-all duration-300 placeholder:text-secondary/50 text-sm ${className || ""}`;
 
     return (
         <div className={`relative w-full ${wrapperClassName || ""}`}>
@@ -73,10 +73,130 @@ const SmartInput = memo(({ value, onChange, placeholder, className, wrapperClass
                 <input ref={inputRef as React.RefObject<HTMLInputElement>} type="text" value={value} onChange={handleChange} className={inputClasses} placeholder={placeholder} maxLength={maxLength} onBlur={() => setTimeout(() => setShowMenu(false), 200)} />
             )}
             {showMenu && (
-                <div className="absolute z-50 bg-card border border-border rounded-xl shadow-2xl mt-2 max-h-48 overflow-y-auto w-full sm:w-64 text-sm custom-scrollbar animate-in fade-in zoom-in-95 duration-200 backdrop-blur-md" style={{ top: '100%', left: 0 }}>
+                <div className="absolute z-50 bg-[#111214]/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] mt-2 max-h-48 overflow-y-auto w-full sm:w-64 text-sm custom-scrollbar animate-in fade-in zoom-in-95 duration-200" style={{ top: '100%', left: 0 }}>
                     {AVAILABLE_VARS.filter(v => v.name.toLowerCase().includes(filter)).map(v => (
-                        <div key={v.name} onMouseDown={(e: MouseEvent<HTMLDivElement>) => { e.preventDefault(); insertVar(v.name); }} className="px-3 py-2 hover:bg-primary/20 cursor-pointer flex justify-between items-center transition-colors border-b border-border/50 last:border-0"><span className="font-bold text-primary font-mono text-xs">{`{${v.name}}`}</span><span className="text-secondary text-[10px]">{v.desc}</span></div>
+                        <div key={v.name} onMouseDown={(e: ReactMouseEvent<HTMLDivElement>) => { e.preventDefault(); insertVar(v.name); }} className="px-3 py-2 hover:bg-[#FF73FA]/20 cursor-pointer flex justify-between items-center transition-colors border-b border-border/50 last:border-0"><span className="font-bold text-[#FF73FA] font-mono text-xs">{`{${v.name}}`}</span><span className="text-secondary text-[10px]">{v.desc}</span></div>
                     ))}
+                </div>
+            )}
+        </div>
+    );
+});
+
+// --- Component: CustomSelect ---
+interface Option { value: string; label: React.ReactNode; style?: React.CSSProperties; }
+interface CustomSelectProps { options: Option[]; value: string; onChange: (val: string) => void; placeholder?: string; icon?: React.ReactNode; }
+
+const CustomSelect = memo(({ options, value, onChange, placeholder, icon }: CustomSelectProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: globalThis.MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const selectedOption = options.find(o => o.value === value);
+
+    return (
+        <div className={`relative w-full ${isOpen ? 'z-[100]' : 'z-10'}`} ref={containerRef}>
+            <div 
+                className="min-h-[46px] w-full bg-secondary/30 text-foreground p-3 rounded-xl border border-border focus-within:border-[#FF73FA] focus-within:ring-2 focus-within:ring-[#FF73FA]/20 transition-all duration-300 cursor-pointer flex justify-between items-center text-sm"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <span className="flex items-center gap-2 font-medium" style={selectedOption?.style}>
+                    {icon && icon}
+                    {selectedOption ? selectedOption.label : (placeholder || "-- เลือก --")}
+                </span>
+                <ChevronDown className={`w-4 h-4 text-secondary transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {isOpen && (
+                <div className="absolute z-50 mt-2 w-full bg-[#111214]/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] max-h-56 overflow-y-auto custom-scrollbar p-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {options.map(option => {
+                        const isSelected = value === option.value;
+                        return (
+                            <div 
+                                key={option.value} 
+                                onClick={() => { onChange(option.value); setIsOpen(false); }}
+                                className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-[#FF73FA]/10 text-[#FF73FA]' : 'hover:bg-secondary/20 text-foreground'}`}
+                            >
+                                <span className="text-sm font-medium flex items-center gap-2" style={option.style}>
+                                    {option.label}
+                                </span>
+                                {isSelected && <Check className="w-4 h-4 text-[#FF73FA] shrink-0" />}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+});
+
+// --- Component: ChannelSelect ---
+interface ChannelSelectProps { channels: Channel[]; selectedChannelId: string; onChange: (channelId: string) => void; }
+const ChannelSelect = memo(({ channels, selectedChannelId, onChange }: ChannelSelectProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: globalThis.MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const selectedChannel = channels.find(c => c.id === selectedChannelId);
+
+    return (
+        <div className={`relative w-full ${isOpen ? 'z-[100]' : 'z-10'}`} ref={containerRef}>
+            <div 
+                className="min-h-[46px] w-full bg-secondary/30 text-foreground p-3 rounded-xl border border-border focus-within:border-[#FF73FA] focus-within:ring-2 focus-within:ring-[#FF73FA]/20 transition-all duration-300 cursor-pointer flex justify-between items-center text-sm"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                {selectedChannel ? (
+                    <span className="flex items-center gap-2 font-medium">
+                        <Hash className="w-4 h-4 text-secondary/70" />
+                        {selectedChannel.name} 
+                        {selectedChannel.category && <span className="text-secondary/50 text-[11px] font-normal ml-1">| {selectedChannel.category}</span>}
+                    </span>
+                ) : (
+                    <span className="text-secondary/50">-- เลือกห้องดิสคอร์ด --</span>
+                )}
+                <ChevronDown className={`w-4 h-4 text-secondary transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {isOpen && (
+                <div className="absolute z-50 mt-2 w-full bg-[#111214]/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] max-h-56 overflow-y-auto custom-scrollbar p-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {channels.map(channel => {
+                        const isSelected = selectedChannelId === channel.id;
+                        return (
+                            <div 
+                                key={channel.id} 
+                                onClick={() => { onChange(channel.id); setIsOpen(false); }}
+                                className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-[#FF73FA]/10 text-[#FF73FA]' : 'hover:bg-secondary/20 text-foreground'}`}
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <Hash className="w-4 h-4 text-secondary/70 shrink-0" />
+                                    <span className="text-sm font-medium flex items-center flex-wrap gap-1">
+                                        {channel.name}
+                                        {channel.category && <span className="text-secondary/50 text-[11px] font-normal">| {channel.category}</span>}
+                                    </span>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-[#FF73FA] shrink-0" />}
+                            </div>
+                        );
+                    })}
+                    {channels.length === 0 && <div className="p-3 text-center text-secondary text-sm">ไม่พบห้องแชทในเซิร์ฟเวอร์</div>}
                 </div>
             )}
         </div>
@@ -89,19 +209,19 @@ const parseMarkdown = (text: string) => {
     const parts = text.split(regex);
     return parts.map((part, index) => {
         if (!part) return null;
-        const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/); if (linkMatch) return <a key={index} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline cursor-pointer break-words transition-colors duration-200">{linkMatch[1]}</a>;
-        const boldMatch = part.match(/^\*\*(.*?)\*\*$/); if (boldMatch) return <strong key={index} className="font-bold text-primary/90">{boldMatch[1]}</strong>;
+        const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/); if (linkMatch) return <a key={index} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-[#FF73FA] hover:underline cursor-pointer break-words transition-colors duration-200">{linkMatch[1]}</a>;
+        const boldMatch = part.match(/^\*\*(.*?)\*\*$/); if (boldMatch) return <strong key={index} className="font-bold text-[#FF73FA]/90">{boldMatch[1]}</strong>;
         const underlineMatch = part.match(/^__(.*?)__$/); if (underlineMatch) return <u key={index} className="underline">{underlineMatch[1]}</u>;
         const strikeMatch = part.match(/^~~(.*?)~~$/); if (strikeMatch) return <s key={index} className="line-through opacity-70">{strikeMatch[1]}</s>;
         const italicMatch = part.match(/^\*(.*?)\*$/) || part.match(/^_(.*?)_$/); if (italicMatch) return <em key={index} className="italic text-secondary">{italicMatch[1]}</em>;
         const codeMatch = part.match(/^`(.*?)`$/); if (codeMatch) return <code key={index} className="bg-secondary/30 text-foreground px-1.5 py-0.5 rounded text-[13px] font-mono border border-border">{codeMatch[1]}</code>;
-        const mentionMatch = part.match(/^<@([^>]+)>$/); if (mentionMatch) return <span key={index} className="bg-primary/20 text-primary px-[4px] py-[1px] mx-[2px] rounded font-medium inline-block break-words cursor-pointer hover:bg-primary hover:text-white transition-colors duration-200">@{mentionMatch[1]}</span>;
-        const channelMatch = part.match(/^<#([^>]+)>$/); if (channelMatch) return <span key={index} className="bg-primary/20 text-primary px-[4px] py-[1px] mx-[2px] rounded font-medium inline-block break-words cursor-pointer hover:bg-primary hover:text-white transition-colors duration-200">#{channelMatch[1]}</span>;
+        const mentionMatch = part.match(/^<@([^>]+)>$/); if (mentionMatch) return <span key={index} className="bg-[#FF73FA]/20 text-[#FF73FA] px-[4px] py-[1px] mx-[2px] rounded font-medium inline-block break-words cursor-pointer hover:bg-[#FF73FA] hover:text-white transition-colors duration-200">@{mentionMatch[1]}</span>;
+        const channelMatch = part.match(/^<#([^>]+)>$/); if (channelMatch) return <span key={index} className="bg-[#FF73FA]/20 text-[#FF73FA] px-[4px] py-[1px] mx-[2px] rounded font-medium inline-block break-words cursor-pointer hover:bg-[#FF73FA] hover:text-white transition-colors duration-200">#{channelMatch[1]}</span>;
         const emojiMatch = part.match(/^:([a-zA-Z0-9_]+):$/); 
         if (emojiMatch) {
             const isNum = /^\d+$/.test(emojiMatch[1]);
             if (isNum) return <img key={index} src={`https://cdn.discordapp.com/emojis/${emojiMatch[1]}.png`} className="w-5 h-5 inline-block align-middle mx-[2px] object-contain transition-transform hover:scale-110 duration-200" alt="emoji"/>;
-            else return <span key={index} className="inline-flex items-center justify-center bg-secondary/20 text-primary border border-border px-1.5 py-0.5 rounded text-[11px] font-mono mx-[2px]">:{emojiMatch[1]}:</span>;
+            else return <span key={index} className="inline-flex items-center justify-center bg-secondary/20 text-[#FF73FA] border border-border px-1.5 py-0.5 rounded text-[11px] font-mono mx-[2px]">:{emojiMatch[1]}:</span>;
         }
         return <span key={index}>{part}</span>;
     });
@@ -133,7 +253,7 @@ const ImageInput = memo(({ label, value, onChange, botAvatar, userReal, guildRea
     }, [value, botAvatar, userReal, guildReal]);
     return (
         <div className="w-full flex-1">
-            <label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide transition-colors flex items-center gap-1"><LinkIcon className="w-3 h-3 text-primary" /> {label}</label>
+            <label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide transition-colors flex items-center gap-1"><LinkIcon className="w-3 h-3 text-[#FF73FA]" /> {label}</label>
             <div className="flex gap-2 w-full items-start">
                 <SmartInput value={value} onChange={onChange} placeholder="https://... หรือ {user.avatar}" wrapperClassName="flex-1 min-w-0" maxLength={500} showCounter={false} />
                 {preview && (<div className="relative group shrink-0"><img src={preview} className="w-[44px] h-[44px] rounded-lg object-cover border border-border shadow-sm group-hover:scale-110 transition-transform duration-300 cursor-pointer" alt="Preview" /></div>)}
@@ -167,10 +287,10 @@ const ImagePreview = ({ imageData, botInfo, userProfile, guildProfile, guildId, 
         return () => { isCancelled = true; clearTimeout(timer); };
     }, [imageData, userProfile, guildProfile, guildId, API_URL, botInfo.avatar]);
     return (
-        <div className="relative w-full rounded-2xl overflow-hidden border border-border shadow-2xl bg-black/40 hover:shadow-primary/10 transition-shadow duration-500">
+        <div className="relative w-full rounded-2xl overflow-hidden border border-border shadow-2xl bg-black/40 hover:shadow-[#FF73FA]/10 transition-shadow duration-500">
              <div className="aspect-[1000/480] w-full relative">
                 {previewUrl ? (<img src={previewUrl} alt="Preview" className="absolute inset-0 w-full h-full object-contain animate-in fade-in duration-500" />) : (<div className="absolute inset-0 flex flex-col items-center justify-center text-secondary animate-pulse"><ImageIcon className="w-10 h-10 md:w-12 md:h-12 mb-2 opacity-50" /><span className="text-[10px] md:text-xs font-mono">RENDERING PREVIEW...</span></div>)}
-                {isLoading && previewUrl && (<div className="absolute top-2 right-2"><div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div></div>)}
+                {isLoading && previewUrl && (<div className="absolute top-2 right-2"><div className="w-4 h-4 border-2 border-[#FF73FA]/30 border-t-[#FF73FA] rounded-full animate-spin"></div></div>)}
              </div>
         </div>
     );
@@ -187,6 +307,7 @@ export default function BoostSettingsPage() {
     const [isHelpModalMounted, setIsHelpModalMounted] = useState(false); const [isHelpModalVisible, setIsHelpModalVisible] = useState(false);
     const openHelpModal = () => { setIsHelpModalMounted(true); setTimeout(() => setIsHelpModalVisible(true), 10); };
     const closeHelpModal = () => { setIsHelpModalVisible(false); setTimeout(() => setIsHelpModalMounted(false), 300); };
+    
     useEffect(() => {
         const updateTime = () => { const now = new Date(); setCurrentTime("Today at " + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })); };
         updateTime(); const interval = setInterval(updateTime, 1000); return () => clearInterval(interval);
@@ -219,7 +340,6 @@ export default function BoostSettingsPage() {
 
     useEffect(() => { if (!initialSettings) return; const current = { isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData }; setIsDirty(JSON.stringify(current) !== JSON.stringify(initialSettings)); }, [isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData, initialSettings]);
     
-    // ✅ Sync Context
     useEffect(() => {
         setGlobalDirty(isDirty);
         const handleBeforeUnload = (e: BeforeUnloadEvent) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
@@ -232,9 +352,28 @@ export default function BoostSettingsPage() {
     const handleAddField = () => { if ((embedData.fields?.length || 0) >= 25) { Swal.fire({ title: 'จำกัดจำนวน', text: 'เพิ่มฟิลด์ได้สูงสุด 25 ช่อง', icon: 'warning', background: '#0f172a', color: '#f1f5f9' }); return; } setEmbedData(prev => ({ ...prev, fields: [...(prev.fields || []), { id: Date.now().toString(), name: "New Field", value: "Value", inline: false }] })); };
     const handleUpdateField = (id: string, key: keyof EmbedField, val: any) => { setEmbedData(prev => ({ ...prev, fields: prev.fields?.map(f => f.id === id ? { ...f, [key]: val } : f) })); };
     const handleRemoveField = (id: string) => { setEmbedData(prev => ({ ...prev, fields: prev.fields?.filter(f => f.id !== id) })); };
-    const handleSave = async (e: FormEvent) => { e.preventDefault(); const res = await fetch(`${API_URL}/api/announcements/${guildId}/save_boost`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: selectedChannel, message, use_embed: useEmbed, embed_data: embedData, use_image: useImage, image_data: imageData }), credentials: 'include' }); if (res.ok) { Swal.fire({ title: 'บันทึกสำเร็จ!', icon: 'success', background: '#0f172a', color: '#f1f5f9', timer: 1500 }); setInitialSettings({ isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData }); setIsDirty(false); } };
+    
+    const handleSave = async (e: FormEvent) => { 
+        e.preventDefault(); 
+        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#0f172a', color: '#f1f5f9' });
+        
+        try {
+            const res = await fetch(`${API_URL}/api/announcements/${guildId}/save_boost`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: selectedChannel, message, use_embed: useEmbed, embed_data: embedData, use_image: useImage, image_data: imageData }), credentials: 'include' }); 
+            const toggleRes = await fetch(`${API_URL}/api/announcements/${guildId}/toggle_boost`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: isEnabled }), credentials: 'include' });
+            
+            if (res.ok && toggleRes.ok) { 
+                Swal.fire({ title: 'บันทึกสำเร็จ!', icon: 'success', background: '#0f172a', color: '#f1f5f9', timer: 1500 }); 
+                setInitialSettings({ isEnabled, selectedChannel, message, useEmbed, embedData, useImage, imageData }); 
+                setIsDirty(false); 
+            } else {
+                Swal.fire({ title: 'เกิดข้อผิดพลาด!', text: 'เซิร์ฟเวอร์ตอบกลับผิดพลาด', icon: 'error', background: '#0f172a', color: '#f1f5f9' });
+            }
+        } catch (err) {
+            Swal.fire({ title: 'ข้อผิดพลาด!', text: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', icon: 'error', background: '#0f172a', color: '#f1f5f9' });
+        }
+    };
+    
     const handleReset = () => { if (initialSettings) { setIsEnabled(initialSettings.isEnabled); setSelectedChannel(initialSettings.selectedChannel); setMessage(initialSettings.message); setUseEmbed(initialSettings.useEmbed); setEmbedData(initialSettings.embedData); setUseImage(initialSettings.useImage); setImageData(initialSettings.imageData); } };
-    const toggleSwitch = async (checked: boolean) => { setIsEnabled(checked); await fetch(`${API_URL}/api/announcements/${guildId}/toggle_boost`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: checked }), credentials: 'include' }); };
 
     const EmbedPreview = () => {
         const pTitle = previewReplacer(embedData.title, botInfo.avatar, userProfile, guildProfile, true); const pDesc = previewReplacer(embedData.description, botInfo.avatar, userProfile, guildProfile, false); const pAuthorName = previewReplacer(embedData.author_name, botInfo.avatar, userProfile, guildProfile, true); const pAuthorIcon = previewReplacer(embedData.author_icon, botInfo.avatar, userProfile, guildProfile, false); const pFooterText = previewReplacer(embedData.footer_text, botInfo.avatar, userProfile, guildProfile, true); const pFooterIcon = previewReplacer(embedData.footer_icon, botInfo.avatar, userProfile, guildProfile, false); const pThumbnail = previewReplacer(embedData.thumbnail, botInfo.avatar, userProfile, guildProfile, false); const pImage = previewReplacer(embedData.image, botInfo.avatar, userProfile, guildProfile, false); const pMessage = previewReplacer(message, botInfo.avatar, userProfile, guildProfile, false);
@@ -268,125 +407,144 @@ export default function BoostSettingsPage() {
     return (
         <div className="flex flex-col pb-32 p-4 md:p-8 min-h-screen max-w-[1920px] mx-auto bg-background/50 font-sans">
             <div className="flex justify-between items-center mb-6 md:mb-10 animate-fade-in-up">
-                <div><h1 className="text-2xl md:text-4xl font-extrabold text-foreground tracking-tight drop-shadow-md text-[#FF73FA]">Boost Message</h1><p className="text-secondary mt-1 md:mt-2 text-sm md:text-lg">จัดการระบบแจ้งเตือนการ Boost Server</p></div>
-                <label className="relative inline-flex items-center cursor-pointer scale-[1.1] md:scale-125 mr-2 md:mr-4 group"><input type="checkbox" className="sr-only peer" checked={isEnabled} onChange={(e) => toggleSwitch(e.target.checked)} /><div className="relative w-12 h-6 md:w-14 md:h-7 bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 md:after:h-6 md:after:w-6 after:transition-all peer-checked:bg-[#FF73FA] peer-checked:shadow-[0_0_10px_rgba(255,115,250,0.5)] group-hover:scale-105 transition-transform duration-300"></div></label>
+                <div>
+                    <h1 className="text-2xl md:text-4xl font-extrabold text-foreground tracking-tight drop-shadow-md flex items-center gap-3">
+                        <Zap className="w-8 h-8 md:w-10 md:h-10 text-[#FF73FA]" /> Boost Message
+                    </h1>
+                    <p className="text-secondary mt-1 md:mt-2 text-sm md:text-lg">จัดการระบบแจ้งเตือนการ Boost Server</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer scale-[1.1] md:scale-125 mr-2 md:mr-4 group"><input type="checkbox" className="sr-only peer" checked={isEnabled} onChange={(e) => setIsEnabled(e.target.checked)} /><div className="relative w-12 h-6 md:w-14 md:h-7 bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 md:after:h-6 md:after:w-6 after:transition-all peer-checked:bg-[#FF73FA] peer-checked:shadow-[0_0_10px_rgba(255,115,250,0.5)] group-hover:scale-105 transition-transform duration-300"></div></label>
             </div>
 
-            {/* General Settings */}
-            <div className="relative z-[20] bg-card backdrop-blur-md p-5 md:p-8 rounded-3xl border border-border mb-6 md:mb-8 shadow-xl hover:shadow-primary/5 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                <h2 className="text-lg md:text-xl font-bold text-foreground mb-4 md:mb-6 border-b border-border/50 pb-3 flex items-center gap-2"><Layout className="w-5 h-5 text-primary" /> การตั้งค่าทั่วไป</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10">
-                    <div>
-                        <label className="block text-secondary text-xs font-bold uppercase mb-2 md:mb-4 tracking-wide">ส่งไปที่ห้อง (Channel)</label>
-                        <select 
-                            value={selectedChannel} 
-                            onChange={(e) => setSelectedChannel(e.target.value)} 
-                            className="w-full bg-secondary/30 text-foreground p-3 rounded-xl border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 custom-scrollbar cursor-pointer text-sm"
-                        >
-                            <option value="" className="bg-[#1e293b] text-white">-- เลือกห้อง --</option>
-                            {channels.map(c => (
-                                <option key={c.id} value={c.id} className="bg-[#1e293b] text-white">
-                                    # {c.name} {c.category ? `| ${c.category}` : ''}
-                                </option>
-                            ))}
-                        </select>
+            {/* 🔥 กล่องคลุมสำหรับทำ Dim Animation ตอนปิดใช้งาน */}
+            <div className={`flex flex-col gap-6 md:gap-8 transition-all duration-500 ease-in-out ${!isEnabled ? 'opacity-50 pointer-events-none select-none grayscale-[20%]' : 'opacity-100 grayscale-0'}`}>
+                
+                {/* General Settings */}
+                <div className="relative z-[20] bg-card backdrop-blur-md p-5 md:p-8 rounded-3xl border border-border shadow-xl hover:shadow-[#FF73FA]/5 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                    <h2 className="text-lg md:text-xl font-bold text-foreground mb-4 md:mb-6 border-b border-border/50 pb-3 flex items-center gap-2"><Layout className="w-5 h-5 text-[#FF73FA]" /> การตั้งค่าทั่วไป</h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10">
+                        <div>
+                            <label className="block text-secondary text-xs font-bold uppercase mb-2 md:mb-4 tracking-wide">ส่งไปที่ห้อง (Channel)</label>
+                            <ChannelSelect 
+                                channels={channels} 
+                                selectedChannelId={selectedChannel} 
+                                onChange={setSelectedChannel} 
+                            />
+                        </div>
+                        <div><label className="block text-secondary text-xs font-bold uppercase mb-2 md:mb-4 tracking-wide">ข้อความหลัก (Main Message)</label><SmartInput value={message} onChange={setMessage} placeholder="ข้อความขอบคุณ..." maxLength={2000} /></div>
                     </div>
-                    <div><label className="block text-secondary text-xs font-bold uppercase mb-2 md:mb-4 tracking-wide">ข้อความหลัก (Main Message)</label><SmartInput value={message} onChange={setMessage} placeholder="ข้อความขอบคุณ..." maxLength={2000} /></div>
                 </div>
-            </div>
 
-            {/* Embed Settings */}
-            <div className="relative z-[10] bg-card backdrop-blur-md p-5 md:p-8 rounded-3xl border border-border mb-6 md:mb-8 shadow-xl hover:shadow-primary/5 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border/50 pb-4 gap-4 sm:gap-0">
-                    <div className="flex items-center justify-between w-full sm:w-auto gap-4"><h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><Layers className="w-5 h-5 text-primary" /> Embed Message</h2></div>
-                    <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end"><button onClick={openHelpModal} className="w-full sm:w-auto justify-center flex items-center gap-2 bg-secondary/30 hover:bg-primary/20 active:scale-95 border border-border px-3 py-1.5 md:py-2 rounded-lg text-secondary transition-all duration-300 hover:text-primary shadow-sm text-xs font-medium group"><BookOpen className="w-4 h-4 text-primary group-hover:scale-110 transition-transform duration-300" /><span>คู่มือตัวแปร</span></button><label className="hidden sm:inline-flex relative items-center cursor-pointer group"><span className="mr-3 text-sm font-medium text-secondary transition-colors group-hover:text-primary">{useEmbed ? 'ON' : 'OFF'}</span><input type="checkbox" className="sr-only peer" checked={useEmbed} onChange={(e) => setUseEmbed(e.target.checked)} /><div className="relative w-11 h-6 bg-slate-700/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary peer-checked:shadow-[0_0_10px_rgba(56,189,248,0.5)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all group-hover:scale-105 transition-transform duration-300"></div></label></div>
-                </div>
-                <div className={`grid transition-all duration-500 ease-in-out ${useEmbed ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'}`}>
-                    <div className={useEmbed ? "overflow-visible" : "overflow-hidden"}>
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 md:gap-10 pt-6">
-                            <div className="space-y-4 md:space-y-6">
-                                <div className="flex flex-col sm:flex-row gap-4"><div className="flex-1 w-full"><ImageInput label="Author Icon" value={embedData.author_icon} onChange={(v) => handleEmbedChange('author_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div><div className="flex-1 w-full"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Author Name</label><SmartInput value={embedData.author_name} onChange={(v) => handleEmbedChange('author_name', v)} placeholder="{user.username}" maxLength={100} /></div></div>
-                                <div><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Title</label><SmartInput value={embedData.title} onChange={(v) => handleEmbedChange('title', v)} className="font-bold" maxLength={100} /></div>
-                                <div><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Description</label><SmartInput isTextarea={true} maxLength={300} value={embedData.description} onChange={(v) => handleEmbedChange('description', v)} className="min-h-[100px] md:min-h-[120px]" /></div>
-                                <div className="flex flex-col sm:flex-row gap-4 items-end"><div className="w-full sm:w-40 shrink-0"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Color</label><div className="flex gap-2 group h-[38px] md:h-[42px]"><div className="relative w-10 md:w-12 h-full rounded-lg overflow-hidden border border-border group-hover:border-primary shrink-0 hover:scale-105 transition-all duration-300"><DebouncedColorInput value={embedData.color} onChange={(val) => handleEmbedChange('color', val)} className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer" /></div><input type="text" value={embedData.color} onChange={(e) => handleEmbedChange('color', e.target.value)} className="flex-1 w-full bg-secondary/30 text-foreground px-2 md:px-2.5 rounded-lg border border-border uppercase font-mono text-sm group-hover:border-primary transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-primary/20" /></div></div><div className="flex-1 w-full mt-4 sm:mt-0"><ImageInput label="Thumbnail URL" value={embedData.thumbnail} onChange={(v) => handleEmbedChange('thumbnail', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div></div>
-                                <div className="w-full pt-2"><ImageInput label="Image URL" value={embedData.image} onChange={(v) => handleEmbedChange('image', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
-                                <div className="border-t border-border pt-6 space-y-6">
-                                    <div className="space-y-4">
-                                        <label className="block text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wide flex items-center gap-1"><Columns className="w-3 h-3 md:w-4 md:h-4 text-primary" /> Embed Fields <span className="bg-secondary/20 border border-border text-secondary px-2 py-0.5 rounded-full ml-2 text-[9px] md:text-[10px]">{(embedData.fields || []).length}/25</span></label>
+                {/* Embed Settings */}
+                <div className="relative z-[10] bg-card backdrop-blur-md p-5 md:p-8 rounded-3xl border border-border shadow-xl hover:shadow-[#FF73FA]/5 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-border/50 pb-4 gap-4 sm:gap-0">
+                        <div className="flex items-center justify-between w-full sm:w-auto gap-4"><h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><Layers className="w-5 h-5 text-[#FF73FA]" /> Embed Message</h2></div>
+                        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end"><button onClick={openHelpModal} className="w-full sm:w-auto justify-center flex items-center gap-2 bg-secondary/30 hover:bg-[#FF73FA]/20 active:scale-95 border border-border px-3 py-1.5 md:py-2 rounded-lg text-secondary transition-all duration-300 hover:text-[#FF73FA] shadow-sm text-xs font-medium group"><BookOpen className="w-4 h-4 text-[#FF73FA] group-hover:scale-110 transition-transform duration-300" /><span>คู่มือตัวแปร</span></button><label className="hidden sm:inline-flex relative items-center cursor-pointer group"><span className="mr-3 text-sm font-medium text-secondary transition-colors group-hover:text-[#FF73FA]">{useEmbed ? 'ON' : 'OFF'}</span><input type="checkbox" className="sr-only peer" checked={useEmbed} onChange={(e) => setUseEmbed(e.target.checked)} /><div className="relative w-11 h-6 bg-slate-700/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#FF73FA] peer-checked:shadow-[0_0_10px_rgba(255,115,250,0.5)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all group-hover:scale-105 transition-transform duration-300"></div></label></div>
+                    </div>
+                    <div className={`grid transition-all duration-500 ease-in-out ${useEmbed ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'}`}>
+                        <div className={useEmbed ? "overflow-visible" : "overflow-hidden"}>
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 md:gap-10 pt-6">
+                                <div className="space-y-4 md:space-y-6">
+                                    <div className="flex flex-col sm:flex-row gap-4"><div className="flex-1 w-full"><ImageInput label="Author Icon" value={embedData.author_icon} onChange={(v) => handleEmbedChange('author_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div><div className="flex-1 w-full"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Author Name</label><SmartInput value={embedData.author_name} onChange={(v) => handleEmbedChange('author_name', v)} placeholder="{user.username}" maxLength={100} /></div></div>
+                                    <div><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Title</label><SmartInput value={embedData.title} onChange={(v) => handleEmbedChange('title', v)} className="font-bold" maxLength={100} /></div>
+                                    <div><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Description</label><SmartInput isTextarea={true} maxLength={300} value={embedData.description} onChange={(v) => handleEmbedChange('description', v)} className="min-h-[100px] md:min-h-[120px]" /></div>
+                                    <div className="flex flex-col sm:flex-row gap-4 items-end"><div className="w-full sm:w-40 shrink-0"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Color</label><div className="flex gap-2 group h-[38px] md:h-[42px]"><div className="relative w-10 md:w-12 h-full rounded-lg overflow-hidden border border-border group-hover:border-[#FF73FA] shrink-0 hover:scale-105 transition-all duration-300"><DebouncedColorInput value={embedData.color} onChange={(val) => handleEmbedChange('color', val)} className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer" /></div><input type="text" value={embedData.color} onChange={(e) => handleEmbedChange('color', e.target.value)} className="flex-1 w-full bg-secondary/30 text-foreground px-2 md:px-2.5 rounded-lg border border-border uppercase font-mono text-sm group-hover:border-[#FF73FA] transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-[#FF73FA]/20" /></div></div><div className="flex-1 w-full mt-4 sm:mt-0"><ImageInput label="Thumbnail URL" value={embedData.thumbnail} onChange={(v) => handleEmbedChange('thumbnail', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div></div>
+                                    <div className="w-full pt-2"><ImageInput label="Image URL" value={embedData.image} onChange={(v) => handleEmbedChange('image', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
+                                    <div className="border-t border-border pt-6 space-y-6">
                                         <div className="space-y-4">
-                                            {(embedData.fields || []).map((field) => (
-                                                <div key={field.id} className="bg-secondary/10 p-3 md:p-4 rounded-xl border border-border animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-3 md:gap-4 relative group hover:border-primary/50 transition-colors">
-                                                    <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"><button type="button" onClick={() => handleRemoveField(field.id)} className="text-red-400 hover:text-red-500 hover:bg-red-400/10 p-1.5 rounded transition-colors active:scale-90"><Trash2 className="w-4 h-4" /></button></div>
-                                                    <div className="flex gap-3 md:gap-4 items-center pr-8 md:pr-10">
-                                                        <div className="flex-1"><label className="block text-secondary text-[9px] md:text-[10px] uppercase mb-1 font-bold">Name (Max 256)</label><SmartInput value={field.name} onChange={v => handleUpdateField(field.id, 'name', v)} maxLength={256} /></div>
-                                                        <div className="shrink-0 flex flex-col items-center"><label className="block text-secondary text-[9px] md:text-[10px] uppercase mb-1.5 font-bold">Inline</label><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={field.inline} onChange={e => handleUpdateField(field.id, 'inline', e.target.checked)} /><div className="w-8 h-4 md:w-9 md:h-5 bg-slate-700/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 md:after:h-4 md:after:w-4 after:transition-all"></div></label></div>
+                                            <label className="block text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wide flex items-center gap-1"><Columns className="w-3 h-3 md:w-4 md:h-4 text-[#FF73FA]" /> Embed Fields <span className="bg-secondary/20 border border-border text-secondary px-2 py-0.5 rounded-full ml-2 text-[9px] md:text-[10px]">{(embedData.fields || []).length}/25</span></label>
+                                            <div className="space-y-4">
+                                                {(embedData.fields || []).map((field) => (
+                                                    <div key={field.id} className="bg-secondary/10 p-3 md:p-4 rounded-xl border border-border animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-3 md:gap-4 relative group hover:border-[#FF73FA]/50 transition-colors">
+                                                        <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"><button type="button" onClick={() => handleRemoveField(field.id)} className="text-red-400 hover:text-red-500 hover:bg-red-400/10 p-1.5 rounded transition-colors active:scale-90"><Trash2 className="w-4 h-4" /></button></div>
+                                                        <div className="flex gap-3 md:gap-4 items-center pr-8 md:pr-10">
+                                                            <div className="flex-1"><label className="block text-secondary text-[9px] md:text-[10px] uppercase mb-1 font-bold">Name (Max 256)</label><SmartInput value={field.name} onChange={v => handleUpdateField(field.id, 'name', v)} maxLength={256} /></div>
+                                                            <div className="shrink-0 flex flex-col items-center"><label className="block text-secondary text-[9px] md:text-[10px] uppercase mb-1.5 font-bold">Inline</label><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={field.inline} onChange={e => handleUpdateField(field.id, 'inline', e.target.checked)} /><div className="w-8 h-4 md:w-9 md:h-5 bg-slate-700/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#FF73FA] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 md:after:h-4 md:after:w-4 after:transition-all"></div></label></div>
+                                                        </div>
+                                                        <div><label className="block text-secondary text-[9px] md:text-[10px] uppercase mb-1 font-bold">Value (Max 1024)</label><SmartInput isTextarea value={field.value} onChange={v => handleUpdateField(field.id, 'value', v)} className="min-h-[50px] md:min-h-[60px]" maxLength={1024} /></div>
                                                     </div>
-                                                    <div><label className="block text-secondary text-[9px] md:text-[10px] uppercase mb-1 font-bold">Value (Max 1024)</label><SmartInput isTextarea value={field.value} onChange={v => handleUpdateField(field.id, 'value', v)} className="min-h-[50px] md:min-h-[60px]" maxLength={1024} /></div>
-                                                </div>
-                                            ))}
-                                            {(embedData.fields?.length === 0 || !embedData.fields) && (<div className="text-center p-4 md:p-6 border-2 border-dashed border-border rounded-xl text-secondary text-[10px] md:text-xs">ยังไม่มีฟิลด์ กดปุ่ม Add Field ด้านล่างเพื่อเพิ่มข้อมูล</div>)}
+                                                ))}
+                                                {(embedData.fields?.length === 0 || !embedData.fields) && (<div className="text-center p-4 md:p-6 border-2 border-dashed border-border rounded-xl text-secondary text-[10px] md:text-xs">ยังไม่มีฟิลด์ กดปุ่ม Add Field ด้านล่างเพื่อเพิ่มข้อมูล</div>)}
+                                            </div>
+                                            <button onClick={handleAddField} type="button" className="flex w-full items-center justify-center gap-2 text-[10px] md:text-xs bg-secondary/30 hover:bg-[#FF73FA]/20 active:scale-[0.99] border border-border text-secondary hover:text-[#FF73FA] py-2.5 md:py-3 rounded-xl transition-all shadow-sm group font-medium mt-2"><Plus className="w-4 h-4 text-[#FF73FA] group-hover:scale-125 transition-transform" /> เพิ่มฟิลด์ใหม่ (Add Field)</button>
                                         </div>
-                                        <button onClick={handleAddField} type="button" className="flex w-full items-center justify-center gap-2 text-[10px] md:text-xs bg-secondary/30 hover:bg-primary/20 active:scale-[0.99] border border-border text-secondary hover:text-primary py-2.5 md:py-3 rounded-xl transition-all shadow-sm group font-medium mt-2"><Plus className="w-4 h-4 text-primary group-hover:scale-125 transition-transform" /> เพิ่มฟิลด์ใหม่ (Add Field)</button>
+                                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-border"><div className="flex-1 w-full"><ImageInput label="Footer Icon" value={embedData.footer_icon} onChange={(v) => handleEmbedChange('footer_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div><div className="flex-1 w-full"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Footer Text</label><SmartInput value={embedData.footer_text} onChange={(v) => handleEmbedChange('footer_text', v)} maxLength={100} /></div></div>
+                                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end bg-secondary/10 p-3 md:p-4 rounded-xl border border-border">
+                                            <div className="w-full sm:w-1/3 shrink-0">
+                                                <label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide flex items-center gap-1"><Clock className="w-3 h-3 text-[#FF73FA]" /> Timestamp</label>
+                                                <CustomSelect 
+                                                    value={embedData.timestamp_mode} 
+                                                    onChange={(val) => handleEmbedChange('timestamp_mode', val)} 
+                                                    options={[
+                                                        { value: "none", label: "ปิด (Off)" },
+                                                        { value: "current", label: "เวลาปัจจุบัน" },
+                                                        { value: "custom", label: "กำหนดเอง" }
+                                                    ]}
+                                                />
+                                            </div>
+                                            {embedData.timestamp_mode === 'custom' && (<div className="flex-1 w-full animate-in fade-in slide-in-from-left-4 duration-300 mt-2 sm:mt-0"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">เลือกวันและเวลา</label><input type="datetime-local" value={embedData.custom_timestamp} onChange={(e) => handleEmbedChange('custom_timestamp', e.target.value)} className="w-full bg-secondary/30 text-foreground p-2 md:p-2.5 rounded-lg border border-border focus:border-[#FF73FA] text-sm focus:ring-2 focus:ring-[#FF73FA]/20 transition-all duration-300" /></div>)}
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-border"><div className="flex-1 w-full"><ImageInput label="Footer Icon" value={embedData.footer_icon} onChange={(v) => handleEmbedChange('footer_icon', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div><div className="flex-1 w-full"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">Footer Text</label><SmartInput value={embedData.footer_text} onChange={(v) => handleEmbedChange('footer_text', v)} maxLength={100} /></div></div>
-                                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end bg-secondary/10 p-3 md:p-4 rounded-xl border border-border"><div className="w-full sm:w-1/3 shrink-0"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide flex items-center gap-1"><Clock className="w-3 h-3 text-primary" /> Timestamp</label><select value={embedData.timestamp_mode} onChange={(e) => handleEmbedChange('timestamp_mode', e.target.value as any)} className="w-full bg-secondary/30 text-foreground p-2 md:p-2.5 rounded-lg border border-border focus:border-primary text-sm focus:ring-2 focus:ring-primary/20 transition-all duration-300 cursor-pointer custom-scrollbar">
-                                        <option value="none" className="bg-[#1e293b] text-white">ปิด (Off)</option>
-                                        <option value="current" className="bg-[#1e293b] text-white">เวลาปัจจุบัน</option>
-                                        <option value="custom" className="bg-[#1e293b] text-white">กำหนดเอง</option>
-                                    </select></div>{embedData.timestamp_mode === 'custom' && (<div className="flex-1 w-full animate-in fade-in slide-in-from-left-4 duration-300 mt-2 sm:mt-0"><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 tracking-wide">เลือกวันและเวลา</label><input type="datetime-local" value={embedData.custom_timestamp} onChange={(e) => handleEmbedChange('custom_timestamp', e.target.value)} className="w-full bg-secondary/30 text-foreground p-2 md:p-2.5 rounded-lg border border-border focus:border-primary text-sm focus:ring-2 focus:ring-primary/20 transition-all duration-300" /></div>)}</div>
                                 </div>
+                                <div className="relative w-full h-full mt-4 xl:mt-0"><div className="sticky top-4 md:top-6 z-10"><div className="flex items-center justify-between mb-2 w-full lg:max-w-2xl"><h3 className="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wide flex items-center gap-1 md:gap-2"><Layers className="w-4 h-4"/> Embed Preview</h3><span className="text-[9px] md:text-[10px] text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full animate-pulse">● Live Update</span></div><div className="w-full lg:max-w-2xl animate-in fade-in zoom-in-95 duration-500"><EmbedPreview /></div></div></div>
                             </div>
-                            <div className="relative w-full h-full mt-4 xl:mt-0"><div className="sticky top-4 md:top-6 z-10"><div className="flex items-center justify-between mb-2 w-full lg:max-w-2xl"><h3 className="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wide flex items-center gap-1 md:gap-2"><Layers className="w-4 h-4"/> Embed Preview</h3><span className="text-[9px] md:text-[10px] text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full animate-pulse">● Live Update</span></div><div className="w-full lg:max-w-2xl animate-in fade-in zoom-in-95 duration-500"><EmbedPreview /></div></div></div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Image Settings */}
-            <div className="relative z-[5] bg-card backdrop-blur-md p-5 md:p-8 rounded-3xl border border-border shadow-xl hover:shadow-primary/5 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-                <div className="flex items-center justify-between border-b border-border/50 pb-4">
-                    <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><Palette className="w-5 h-5 text-primary" /> Boost Image</h2>
-                    <label className="relative inline-flex items-center cursor-pointer group"><span className="mr-2 md:mr-3 text-xs md:text-sm font-medium text-secondary group-hover:text-primary transition-colors">{useImage ? 'ON' : 'OFF'}</span><input type="checkbox" className="sr-only peer" checked={useImage} onChange={(e) => setUseImage(e.target.checked)} /><div className="relative w-10 h-5 md:w-11 md:h-6 bg-slate-700/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary peer-checked:shadow-[0_0_10px_rgba(255,115,250,0.5)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 md:after:h-5 md:after:w-5 after:transition-all group-hover:scale-105 transition-transform duration-300"></div></label>
-                </div>
-                <div className={`grid transition-all duration-500 ease-in-out ${useImage ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'}`}>
-                    <div className={useImage ? "overflow-visible" : "overflow-hidden"}>
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 md:gap-10 pt-6">
-                            <div className="space-y-4 md:space-y-6">
-                                <div className="bg-secondary/10 p-4 md:p-5 rounded-xl border border-border shadow-inner hover:border-primary/50 transition-colors duration-300">
-                                    <label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 md:mb-3 flex items-center gap-2 transition-colors"><Type className="w-4 h-4" /> เลือกแบบอักษร (Font)</label>
-                                    <select 
-                                        value={imageData.font_name} 
-                                        onChange={(e) => handleImageChange('font_name', e.target.value)} 
-                                        className="w-full bg-secondary/30 text-foreground p-2.5 rounded-lg border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 cursor-pointer custom-scrollbar text-sm"
-                                        style={{ fontFamily: imageData.font_name.replace('.ttf', '').replace('.otf', '').split('-')[0] }}
-                                    >
-                                        <option value="Default" className="bg-[#1e293b] text-white">Default</option>
-                                        {availableFonts.map(f => {
-                                            const cleanName = f.replace('.ttf', '').replace('.otf', '');
-                                            const family = cleanName.split('-')[0];
-                                            return (
-                                                <option key={f} value={f} style={{ fontFamily: family }} className="bg-[#1e293b] text-white">
-                                                    {cleanName}
-                                                </option>
-                                            );
-                                        })}
-                                    </select>
+                {/* Image Settings */}
+                <div className="relative z-[5] bg-card backdrop-blur-md p-5 md:p-8 rounded-3xl border border-border shadow-xl hover:shadow-[#FF73FA]/5 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+                    <div className="flex items-center justify-between border-b border-border/50 pb-4">
+                        <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><Palette className="w-5 h-5 text-[#FF73FA]" /> Boost Image</h2>
+                        <label className="relative inline-flex items-center cursor-pointer group"><span className="mr-2 md:mr-3 text-xs md:text-sm font-medium text-secondary group-hover:text-[#FF73FA] transition-colors">{useImage ? 'ON' : 'OFF'}</span><input type="checkbox" className="sr-only peer" checked={useImage} onChange={(e) => setUseImage(e.target.checked)} /><div className="relative w-10 h-5 md:w-11 md:h-6 bg-slate-700/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#FF73FA] peer-checked:shadow-[0_0_10px_rgba(255,115,250,0.5)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 md:after:h-5 md:after:w-5 after:transition-all group-hover:scale-105 transition-transform duration-300"></div></label>
+                    </div>
+                    <div className={`grid transition-all duration-500 ease-in-out ${useImage ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'}`}>
+                        <div className={useImage ? "overflow-visible" : "overflow-hidden"}>
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 md:gap-10 pt-6">
+                                <div className="space-y-4 md:space-y-6">
+                                    <div className="bg-secondary/10 p-4 md:p-5 rounded-xl border border-border shadow-inner hover:border-[#FF73FA]/50 transition-colors duration-300">
+                                        <label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 md:mb-3 flex items-center gap-2 transition-colors"><Type className="w-4 h-4" /> เลือกแบบอักษร (Font)</label>
+                                        <CustomSelect 
+                                            value={imageData.font_name} 
+                                            onChange={(val) => handleImageChange('font_name', val)} 
+                                            options={[
+                                                { value: "Default", label: "Default" },
+                                                ...availableFonts.map(f => {
+                                                    const cleanName = f.replace('.ttf', '').replace('.otf', '');
+                                                    const family = cleanName.split('-')[0];
+                                                    return { value: f, label: cleanName, style: { fontFamily: family } };
+                                                })
+                                            ]}
+                                        />
+                                    </div>
+                                    <div className="w-full"><ImageInput label="URL พื้นหลัง (Background Image)" value={imageData.bg_url} onChange={(v) => handleImageChange('bg_url', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
+                                    <div className="space-y-4 md:space-y-6 bg-secondary/10 p-4 md:p-6 rounded-xl border border-border shadow-inner hover:border-[#FF73FA]/50 transition-colors duration-300"><h3 className="text-foreground text-xs md:text-sm font-bold border-b border-border pb-2 flex items-center gap-2"><Info className="w-4 h-4 text-yellow-500" /> ตั้งค่าข้อความบนภาพ</h3><div className="space-y-3 md:space-y-4 pt-2"><div className="flex gap-2 md:gap-4 items-end"><div className="flex-1"><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">บรรทัดที่ 1 (Title)</label><SmartInput value={imageData.image_title} onChange={(v) => handleImageChange('image_title', v)} maxLength={30} /></div><div className="relative w-10 h-[38px] rounded border border-border hover:border-[#FF73FA] overflow-hidden hover:scale-105 transition-all duration-300 shrink-0"><DebouncedColorInput value={imageData.title_color} onChange={(val) => handleImageChange('title_color', val)} className="absolute -top-2 -left-2 w-14 h-14 cursor-pointer" /></div></div><div className="flex gap-2 md:gap-4 items-end"><div className="flex-1"><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">บรรทัดที่ 2 (Username)</label><SmartInput value={imageData.image_username} onChange={(v) => handleImageChange('image_username', v)} maxLength={32} /></div><div className="relative w-10 h-[38px] rounded border border-border hover:border-[#FF73FA] overflow-hidden hover:scale-105 transition-all duration-300 shrink-0"><DebouncedColorInput value={imageData.username_color} onChange={(val) => handleImageChange('username_color', val)} className="absolute -top-2 -left-2 w-14 h-14 cursor-pointer" /></div></div><div className="flex gap-2 md:gap-4 items-end"><div className="flex-1"><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">บรรทัดที่ 3 (Sub-Text)</label><SmartInput value={imageData.text_content} onChange={(v) => handleImageChange('text_content', v)} maxLength={50} /></div><div className="relative w-10 h-[38px] rounded border border-border hover:border-[#FF73FA] overflow-hidden hover:scale-105 transition-all duration-300 shrink-0"><DebouncedColorInput value={imageData.message_color} onChange={(val) => handleImageChange('message_color', val)} className="absolute -top-2 -left-2 w-14 h-14 cursor-pointer" /></div></div></div></div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6"><div><label className="block text-secondary text-xs font-bold uppercase mb-3">Avatar Shape</label><div className="flex bg-secondary/30 rounded-lg p-1 border border-border"><button type="button" onClick={() => handleImageChange('avatar_shape', 'circle')} className={`flex-1 py-1.5 text-xs rounded-md transition-all duration-300 hover:scale-[1.02] active:scale-95 ${imageData.avatar_shape === 'circle' ? 'bg-[#FF73FA] text-white shadow-md' : 'text-secondary hover:bg-secondary/50'}`}>Circle</button><button type="button" onClick={() => handleImageChange('avatar_shape', 'square')} className={`flex-1 py-1.5 text-xs rounded-md transition-all duration-300 hover:scale-[1.02] active:scale-95 ${imageData.avatar_shape === 'square' ? 'bg-[#FF73FA] text-white shadow-md' : 'text-secondary hover:bg-secondary/50'}`}>Square</button></div></div><div><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 md:mb-3 flex justify-between">Overlay Opacity <span>{imageData.overlay_opacity}%</span></label><input type="range" min="0" max="100" value={imageData.overlay_opacity} onChange={(e) => handleImageChange('overlay_opacity', Number(e.target.value))} className="w-full h-2 mt-2 bg-secondary/30 rounded appearance-none cursor-pointer accent-[#FF73FA] hover:scale-[1.01] transition-transform duration-300" /></div></div>
+                                    <div className="grid grid-cols-3 gap-2 md:gap-4">
+                                        <div>
+                                            <label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">Position</label>
+                                            <CustomSelect 
+                                                value={imageData.image_position} 
+                                                onChange={(val) => handleImageChange('image_position', val as any)} 
+                                                options={[
+                                                    { value: "left", label: "Left" },
+                                                    { value: "center", label: "Center" },
+                                                    { value: "right", label: "Right" },
+                                                    { value: "text", label: "Text Only" }
+                                                ]}
+                                            />
+                                        </div>
+                                        <div><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">Circle Color</label><div className="relative w-full h-[32px] md:h-[46px] rounded-xl border border-border hover:border-[#FF73FA] overflow-hidden hover:scale-105 transition-all duration-300 shrink-0"><DebouncedColorInput value={imageData.circle_color} onChange={(val) => handleImageChange('circle_color', val)} className="absolute -top-2 -left-2 w-full h-16 cursor-pointer scale-150" /></div></div>
+                                        <div><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">Overlay Color</label><div className="relative w-full h-[32px] md:h-[46px] rounded-xl border border-border hover:border-[#FF73FA] overflow-hidden hover:scale-105 transition-all duration-300 shrink-0"><DebouncedColorInput value={imageData.overlay_color} onChange={(val) => handleImageChange('overlay_color', val)} className="absolute -top-2 -left-2 w-full h-16 cursor-pointer scale-150" /></div></div>
+                                    </div>
                                 </div>
-                                <div className="w-full"><ImageInput label="URL พื้นหลัง (Background Image)" value={imageData.bg_url} onChange={(v) => handleImageChange('bg_url', v)} botAvatar={botInfo.avatar} userReal={userProfile} guildReal={guildProfile} /></div>
-                                <div className="space-y-4 md:space-y-6 bg-secondary/10 p-4 md:p-6 rounded-xl border border-border shadow-inner hover:border-primary/50 transition-colors duration-300"><h3 className="text-foreground text-xs md:text-sm font-bold border-b border-border pb-2 flex items-center gap-2"><Info className="w-4 h-4 text-yellow-500" /> ตั้งค่าข้อความบนภาพ</h3><div className="space-y-3 md:space-y-4 pt-2"><div className="flex gap-2 md:gap-4 items-end"><div className="flex-1"><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">บรรทัดที่ 1 (Title)</label><SmartInput value={imageData.image_title} onChange={(v) => handleImageChange('image_title', v)} maxLength={30} /></div><div className="relative w-10 h-[38px] rounded border border-border hover:border-primary overflow-hidden hover:scale-105 transition-all duration-300 shrink-0"><DebouncedColorInput value={imageData.title_color} onChange={(val) => handleImageChange('title_color', val)} className="absolute -top-2 -left-2 w-14 h-14 cursor-pointer" /></div></div><div className="flex gap-2 md:gap-4 items-end"><div className="flex-1"><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">บรรทัดที่ 2 (Username)</label><SmartInput value={imageData.image_username} onChange={(v) => handleImageChange('image_username', v)} maxLength={32} /></div><div className="relative w-10 h-[38px] rounded border border-border hover:border-primary overflow-hidden hover:scale-105 transition-all duration-300 shrink-0"><DebouncedColorInput value={imageData.username_color} onChange={(val) => handleImageChange('username_color', val)} className="absolute -top-2 -left-2 w-14 h-14 cursor-pointer" /></div></div><div className="flex gap-2 md:gap-4 items-end"><div className="flex-1"><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">บรรทัดที่ 3 (Sub-Text)</label><SmartInput value={imageData.text_content} onChange={(v) => handleImageChange('text_content', v)} maxLength={50} /></div><div className="relative w-10 h-[38px] rounded border border-border hover:border-primary overflow-hidden hover:scale-105 transition-all duration-300 shrink-0"><DebouncedColorInput value={imageData.message_color} onChange={(val) => handleImageChange('message_color', val)} className="absolute -top-2 -left-2 w-14 h-14 cursor-pointer" /></div></div></div></div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6"><div><label className="block text-secondary text-xs font-bold uppercase mb-3">Avatar Shape</label><div className="flex bg-secondary/30 rounded-lg p-1 border border-border"><button type="button" onClick={() => handleImageChange('avatar_shape', 'circle')} className={`flex-1 py-1.5 text-xs rounded-md transition-all duration-300 hover:scale-[1.02] active:scale-95 ${imageData.avatar_shape === 'circle' ? 'bg-primary text-white shadow-md' : 'text-secondary hover:bg-secondary/50'}`}>Circle</button><button type="button" onClick={() => handleImageChange('avatar_shape', 'square')} className={`flex-1 py-1.5 text-xs rounded-md transition-all duration-300 hover:scale-[1.02] active:scale-95 ${imageData.avatar_shape === 'square' ? 'bg-primary text-white shadow-md' : 'text-secondary hover:bg-secondary/50'}`}>Square</button></div></div><div><label className="block text-secondary text-[10px] md:text-xs font-bold uppercase mb-2 md:mb-3 flex justify-between">Overlay Opacity <span>{imageData.overlay_opacity}%</span></label><input type="range" min="0" max="100" value={imageData.overlay_opacity} onChange={(e) => handleImageChange('overlay_opacity', Number(e.target.value))} className="w-full h-2 mt-2 bg-secondary/30 rounded appearance-none cursor-pointer accent-primary hover:scale-[1.01] transition-transform duration-300" /></div></div>
-                                <div className="grid grid-cols-3 gap-2 md:gap-4"><div><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">Position</label><select value={imageData.image_position} onChange={(e) => handleImageChange('image_position', e.target.value as any)} className="w-full bg-secondary/30 text-foreground p-1.5 md:p-2 rounded-lg border border-border text-[10px] md:text-xs focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 cursor-pointer">
-                                    <option value="left" className="bg-[#1e293b] text-white">Left</option>
-                                    <option value="center" className="bg-[#1e293b] text-white">Center</option>
-                                    <option value="right" className="bg-[#1e293b] text-white">Right</option>
-                                    <option value="text" className="bg-[#1e293b] text-white">Text Only</option>
-                                </select></div><div><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">Circle Color</label><div className="relative w-full h-[32px] md:h-[38px] rounded-lg border border-border hover:border-primary overflow-hidden hover:scale-105 transition-all duration-300 shrink-0"><DebouncedColorInput value={imageData.circle_color} onChange={(val) => handleImageChange('circle_color', val)} className="absolute -top-2 -left-2 w-full h-14 cursor-pointer scale-150" /></div></div><div><label className="block text-secondary text-[9px] md:text-[10px] font-bold uppercase mb-1">Overlay Color</label><div className="relative w-full h-[32px] md:h-[38px] rounded-lg border border-border hover:border-primary overflow-hidden hover:scale-105 transition-all duration-300 shrink-0"><DebouncedColorInput value={imageData.overlay_color} onChange={(val) => handleImageChange('overlay_color', val)} className="absolute -top-2 -left-2 w-full h-14 cursor-pointer scale-150" /></div></div></div>
+                                <div className="relative w-full h-full mt-4 xl:mt-0"><div className="sticky top-4 md:top-6 z-10"><div className="flex items-center justify-between mb-2 w-full lg:max-w-2xl"><h3 className="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wide flex items-center gap-1 md:gap-2"><ImageIcon className="w-3 h-3 md:w-4 md:h-4" /> Live Preview Image</h3><span className="text-[9px] md:text-[10px] text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full animate-pulse">● Live Update</span></div><div className="w-full lg:max-w-2xl animate-in fade-in zoom-in-95 duration-500"><ImagePreview imageData={imageData} botInfo={botInfo} userProfile={userProfile} guildProfile={guildProfile} guildId={guildId} API_URL={API_URL} /></div></div></div>
                             </div>
-                            <div className="relative w-full h-full mt-4 xl:mt-0"><div className="sticky top-4 md:top-6 z-10"><div className="flex items-center justify-between mb-2 w-full lg:max-w-2xl"><h3 className="text-secondary text-[10px] md:text-xs font-bold uppercase tracking-wide flex items-center gap-1 md:gap-2"><ImageIcon className="w-3 h-3 md:w-4 md:h-4" /> Live Preview Image</h3><span className="text-[9px] md:text-[10px] text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full animate-pulse">● Live Update</span></div><div className="w-full lg:max-w-2xl animate-in fade-in zoom-in-95 duration-500"><ImagePreview imageData={imageData} botInfo={botInfo} userProfile={userProfile} guildProfile={guildProfile} guildId={guildId} API_URL={API_URL} /></div></div></div>
                         </div>
                     </div>
                 </div>
-            </div>
+
+            </div> {/* <-- จบ Wrapper สำหรับ Dim */}
 
             {/* Sticky Action Bar */}
             <div className={`fixed bottom-0 left-0 right-0 p-4 md:p-6 lg:ml-64 flex justify-center items-center transition-all duration-500 transform pointer-events-none ${isDirty ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'} z-[70]`}>
@@ -394,13 +552,13 @@ export default function BoostSettingsPage() {
                     <span className="text-white font-medium flex items-center gap-2 pl-2 text-sm md:text-base"><span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>คุณมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก</span>
                     <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
                         <button type="button" onClick={handleReset} className="flex-1 sm:flex-none flex justify-center items-center gap-2 text-secondary hover:text-foreground px-3 md:px-4 py-2 rounded-xl hover:bg-secondary/20 transition-all duration-300 hover:scale-105 active:scale-95 font-medium text-xs md:text-sm bg-secondary/10 sm:bg-transparent"><RotateCcw className="w-3 h-3 md:w-4 md:h-4" /> Reset</button>
-                        <button type="submit" onClick={handleSave} className="flex-1 sm:flex-none justify-center bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 md:px-6 rounded-xl shadow-lg hover:shadow-primary/30 hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 flex items-center gap-2 text-xs md:text-sm"><Save className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden sm:inline">บันทึกการเปลี่ยนแปลง (Save)</span><span className="sm:hidden">บันทึก</span></button>
+                        <button type="submit" onClick={handleSave} className="flex-1 sm:flex-none justify-center bg-[#FF73FA] hover:bg-[#FF73FA]/90 text-white font-bold py-2 px-4 md:px-6 rounded-xl shadow-lg hover:shadow-[#FF73FA]/30 hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 flex items-center gap-2 text-xs md:text-sm"><Save className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden sm:inline">บันทึกการเปลี่ยนแปลง (Save)</span><span className="sm:hidden">บันทึก</span></button>
                     </div>
                 </div>
             </div>
 
             {/* Help Modal */}
-            {isHelpModalMounted && (<div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${isHelpModalVisible ? 'opacity-100' : 'opacity-0'}`} onClick={closeHelpModal}><div className={`bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] md:max-h-[85vh] overflow-hidden transition-all duration-300 ease-out transform ${isHelpModalVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-8'}`} onClick={e => e.stopPropagation()}><div className="p-4 md:p-6 border-b border-border flex justify-between items-center bg-secondary/10 shrink-0"><h3 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><span className="font-mono bg-secondary/20 px-2 py-1 rounded text-primary shadow-sm">{`{}`}</span> คู่มือ & Markdown</h3><button onClick={closeHelpModal} className="text-secondary hover:text-foreground hover:bg-secondary/20 p-1.5 rounded-lg transition-all duration-300 hover:scale-110 active:scale-90"><svg width="20" height="20" className="md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6 md:space-y-8"><section><h4 className="text-foreground font-bold mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base"><Layers className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> ตัวแปรที่ใช้ได้ (Variables)</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">{AVAILABLE_VARS.map((v, i) => (<div key={v.name} className={`bg-secondary/10 p-2 md:p-3 rounded-xl border border-border flex flex-col gap-1 hover:border-primary hover:shadow-md transition-all duration-500 ease-out transform ${isHelpModalVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: `${i * 30}ms` }}><span className="font-mono text-foreground font-bold text-xs md:text-sm bg-secondary/20 px-2 py-0.5 rounded w-fit">{`{${v.name}}`}</span><span className="text-secondary text-[10px] md:text-xs">{v.desc}</span></div>))}</div></section><section><h4 className="text-foreground font-bold mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base"><Type className="w-4 h-4 md:w-5 md:h-5 text-primary" /> การจัดรูปแบบข้อความ (Discord Markdown)</h4><div className={`bg-secondary/10 rounded-xl border border-border overflow-x-auto hover:border-primary/50 transition-all duration-500 ease-out transform shadow-sm ${isHelpModalVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '400ms' }}><table className="w-full text-left text-xs md:text-sm min-w-[400px]"><thead className="bg-secondary/20 border-b border-border text-secondary"><tr><th className="p-2 md:p-3 font-semibold w-1/2">พิมพ์แบบนี้</th><th className="p-2 md:p-3 font-semibold w-1/2">ผลลัพธ์ที่ได้</th></tr></thead><tbody className="text-foreground divide-y divide-border"><tr className="hover:bg-secondary/20 transition-colors"><td className="p-2 md:p-3 font-mono">**ตัวหนา**</td><td className="p-2 md:p-3"><strong>ตัวหนา</strong></td></tr><tr className="hover:bg-secondary/20 transition-colors"><td className="p-2 md:p-3 font-mono">*ตัวเอียง* หรือ _ตัวเอียง_</td><td className="p-2 md:p-3"><em className="italic">ตัวเอียง</em></td></tr></tbody></table></div></section></div></div></div>)}
+            {isHelpModalMounted && (<div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${isHelpModalVisible ? 'opacity-100' : 'opacity-0'}`} onClick={closeHelpModal}><div className={`bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] md:max-h-[85vh] overflow-hidden transition-all duration-300 ease-out transform ${isHelpModalVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-8'}`} onClick={e => e.stopPropagation()}><div className="p-4 md:p-6 border-b border-border flex justify-between items-center bg-secondary/10 shrink-0"><h3 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2"><span className="font-mono bg-secondary/20 px-2 py-1 rounded text-[#FF73FA] shadow-sm">{`{}`}</span> คู่มือ & Markdown</h3><button onClick={closeHelpModal} className="text-secondary hover:text-foreground hover:bg-secondary/20 p-1.5 rounded-lg transition-all duration-300 hover:scale-110 active:scale-90"><svg width="20" height="20" className="md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6 md:space-y-8"><section><h4 className="text-foreground font-bold mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base"><Layers className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> ตัวแปรที่ใช้ได้ (Variables)</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">{AVAILABLE_VARS.map((v, i) => (<div key={v.name} className={`bg-secondary/10 p-2 md:p-3 rounded-xl border border-border flex flex-col gap-1 hover:border-[#FF73FA] hover:shadow-md transition-all duration-500 ease-out transform ${isHelpModalVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: `${i * 30}ms` }}><span className="font-mono text-foreground font-bold text-xs md:text-sm bg-secondary/20 px-2 py-0.5 rounded w-fit">{`{${v.name}}`}</span><span className="text-secondary text-[10px] md:text-xs">{v.desc}</span></div>))}</div></section><section><h4 className="text-foreground font-bold mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base"><Type className="w-4 h-4 md:w-5 md:h-5 text-[#FF73FA]" /> การจัดรูปแบบข้อความ (Discord Markdown)</h4><div className={`bg-secondary/10 rounded-xl border border-border overflow-x-auto hover:border-[#FF73FA]/50 transition-all duration-500 ease-out transform shadow-sm ${isHelpModalVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '400ms' }}><table className="w-full text-left text-xs md:text-sm min-w-[400px]"><thead className="bg-secondary/20 border-b border-border text-secondary"><tr><th className="p-2 md:p-3 font-semibold w-1/2">พิมพ์แบบนี้</th><th className="p-2 md:p-3 font-semibold w-1/2">ผลลัพธ์ที่ได้</th></tr></thead><tbody className="text-foreground divide-y divide-border"><tr className="hover:bg-secondary/20 transition-colors"><td className="p-2 md:p-3 font-mono">**ตัวหนา**</td><td className="p-2 md:p-3"><strong>ตัวหนา</strong></td></tr><tr className="hover:bg-secondary/20 transition-colors"><td className="p-2 md:p-3 font-mono">*ตัวเอียง* หรือ _ตัวเอียง_</td><td className="p-2 md:p-3"><em className="italic">ตัวเอียง</em></td></tr></tbody></table></div></section></div></div></div>)}
         </div>
     );
 }
